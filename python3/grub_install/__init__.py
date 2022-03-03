@@ -35,19 +35,25 @@ __author__ = "fpemud@sina.com (Fpemud)"
 __version__ = "0.0.1"
 
 
-from .core import StorageLayout
-from .core import MountParam
-from .core import BootDirRwController
+class Platforms(enum.Enum):
 
-from .core import get_supported_storage_layouts
-from .core import get_current_storage_layout
-from .core import detect_and_mount_storage_layout
-from .core import create_and_mount_storage_layout
 
-from .errors import CheckCode
 
-from .errors import StorageLayoutError
-from .errors import StorageLayoutCreateError
-from .errors import StorageLayoutAddDiskError
-from .errors import StorageLayoutRemoveDiskError
-from .errors import StorageLayoutParseError
+
+
+from ._core import StorageLayout
+from ._core import MountParam
+from ._core import BootDirRwController
+
+from ._core import get_supported_storage_layouts
+from ._core import get_current_storage_layout
+from ._core import detect_and_mount_storage_layout
+from ._core import create_and_mount_storage_layout
+
+from ._errors import CheckCode
+
+from ._errors import StorageLayoutError
+from ._errors import StorageLayoutCreateError
+from ._errors import StorageLayoutAddDiskError
+from ._errors import StorageLayoutRemoveDiskError
+from ._errors import StorageLayoutParseError

@@ -21,43 +21,34 @@
 # THE SOFTWARE.
 
 
-import os
+import abc
 
 
-class GrubInstaller:
+class Target(abc.ABC):
 
-    def __init__(self, base_dir=None, source_dir=None, locale_dir=None):
-        self._baseDir = base_dir if base_dir is not None else "/"
-        self._sourceDir = source_dir if source_dir is not None else os.path.join(base_dir, "usr", "lib", "grub")
-        self._localeDir = locale_dir if locale_dir is not None else os.path.join(base_dir, "usr", "share", "locale")
+    def __init__(self, name):
+        assert name in ["arm-coreboot", "arm-coreboot-vexpress", "arm-coreboot-veyron", "arm-uboot"] or \
+               name in ["arm64-efi"] or \
+               name in ["i386-coreboot", "i386-efi", "i386-ieee1275", "i386-multiboot", "i386-pc", "i386-pc-eltorito", "i386-pc-pxe", "i386-qemu", "i386-xen", "i386-xen_pvh"] or \
+               name in ["x86_64-efi", "x86_64_xen"]
 
-    def install(self):
-        pass
+        self._name = name
+        # self.allow_floppy = XXX   # --allow-floppy
+        # self.themes = XXX         # --themes=THEMES
+        # self.locales = XXX        # --locales=LOCALES
+        # self.pubkey = XXX         # --pubkey=FILE
+        # self.modules = XXX        # --install-modules=MODULES
+        # self.fonts = XXX          # --fonts=FONTS
+        # self.compress = XXX       # --compress=no|xz|gz|lzo
 
-    def check(self):
-        pass
+        # we won't support:
+        # 1. 
+
+    @property
+    def name(self):
+        return self._name
 
 
-
-
-# arm-coreboot
-# arm-coreboot-vexpress
-# arm-coreboot-veyron
-# arm-efi
-# arm-uboot
-
-# arm64-efi
-
-# i386-coreboot
-# i386-efi
-# i386-ieee1275,
-# i386-multiboot
-# i386-pc
-# i386-pc-eltorito
-# i386-pc-pxe
-# i386-qemu
-# i386-xen
-# i386-xen_pvh
 
 # ia64-efi
 
@@ -82,7 +73,3 @@ class GrubInstaller:
 # sparc64-ieee1275-raw
 # sparc64-ieee1275-cdcore
 # sparc64-ieee1275-aout
-
-# x86_64-efi
-# x86_64-xen
-
