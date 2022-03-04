@@ -64,12 +64,14 @@ class Target(abc.ABC):
             elif self._targetType == TargetType.MOUNTED_HDD_DEV:
                 _Common.init_platforms(self)
                 for pt in self._platforms:
+                    # FIXME: detect unbootable item
                     pass
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 assert False                                                    # FIXME
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
                 for pt in self._platforms:
+                    # FIXME: detect unbootable item
                     pass
             else:
                 assert False
@@ -122,6 +124,8 @@ class Target(abc.ABC):
         else:
             assert False
 
+        self._platforms[platform_type] = PlatformInstallStatus.BOOTABLE
+
     def remove_platform(self, platform_type):
         assert isinstance(platform_type, PlatformType)
         
@@ -146,6 +150,8 @@ class Target(abc.ABC):
             _Common.remove_platform(self, platform_type)
         else:
             assert False
+
+        del self._platforms[platform_type]
 
     def check(self, auto_fix=False):
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
@@ -184,7 +190,7 @@ class _Common:
             for fn in os.listdir(grubDir):
                 for pt in PlatformType:
                     if fn == pt.value:
-                        p._platforms[pt] = None
+                        p._platforms[pt] = PlatformInstallStatus.BOOTABLE
 
     def install_platform(p, platform_type, source):
         disk_module = None
