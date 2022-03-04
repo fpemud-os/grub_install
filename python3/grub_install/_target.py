@@ -27,7 +27,7 @@ import shutil
 import pathlib
 from ._util import force_rm, force_mkdir
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallStatus
-from ._handy import Handy
+from ._handy import Handy, Grub
 from ._source import Source
 
 
@@ -198,7 +198,7 @@ class _Common:
 
         grub_install_copy_files(source)
 
-        Handy.grubCreateEnvBlkFile(os.path.join(p._bootDir, "grub", "grubenv"))
+        Grub.createEnvBlkFile(os.path.join(p._bootDir, "grub", "grubenv"))
 
         push_module(fs)
 
@@ -295,33 +295,33 @@ class _Bios:
         # install into device bios mbr
         if True:
             bootBuf = pathlib.Path(bootImgFile).read_bytes()
-            if len(bootBuf) != Handy.GRUB_DISK_SECTOR_SIZE:
-                raise Exception("the size of '%s' is not %u" % (bootImgFile, Handy.GRUB_DISK_SECTOR_SIZE))
+            if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
+                raise Exception("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
 
             coreBuf = pathlib.Path(coreImgFile).read_bytes()
-            if len(coreBuf) < Handy.GRUB_DISK_SECTOR_SIZE:
+            if len(coreBuf) < Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is too small" % (coreImgFile))
-            if len(coreBuf) > 0xFFFF * Handy.GRUB_DISK_SECTOR_SIZE:
+            if len(coreBuf) > 0xFFFF * Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is too large" % (coreImgFile))
-            coreSectors = (len(coreBuf) + Handy.GRUB_DISK_SECTOR_SIZE - 1) // Handy.GRUB_DISK_SECTOR_SIZE
+            coreSectors = (len(coreBuf) + Grub.DISK_SECTOR_SIZE - 1) // Grub.DISK_SECTOR_SIZE
 
             bootBuf = bytearray(bootBuf)
             with open(dev, "rb") as f:
-                tmpBuf = f.read(Handy.GRUB_DISK_SECTOR_SIZE)
+                tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
 
                 # Copy the possible DOS BPB.
-                s, e = Handy.GRUB_BOOT_MACHINE_BPB_START, Handy.GRUB_BOOT_MACHINE_BPB_END
+                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
                 bootBuf[s:e] = tmpBuf[s:e]
 
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
                 # for buggy BIOSes which don't pass boot drive correctly. Instead,
                 # they pass 0x00 or 0x01 even when booted from 0x80.
                 # Replace the jmp (2 bytes) with double nop's.
-                bootBuf[Handy.GRUB_BOOT_MACHINE_DRIVE_CHECK] = 0x90
-                bootBuf[Handy.GRUB_BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
+                bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK] = 0x90
+                bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
 
                 # Copy the partition table.
-                s, e = Handy.GRUB_BOOT_MACHINE_WINDOWS_NT_MAGIC, Handy.GRUB_BOOT_MACHINE_PART_END
+                s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                 bootBuf[s:e] = tmpBuf[s:e]
 
             # FIXME
@@ -366,8 +366,8 @@ class _Bios:
             nsec = coreSectors
             maxsec = 2 * coreSectors    # add_rs_codes
 
-            if maxsec > ((0x78000 - Handy.GRUB_KERNEL_I386_PC_LINK_ADDR) // Handy.GRUB_DISK_SECTOR_SIZE)
-                maxsec = ((0x78000 - Handy.GRUB_KERNEL_I386_PC_LINK_ADDR) // Handy.GRUB_DISK_SECTOR_SIZE)
+            if maxsec > ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
+                maxsec = ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
 
             # FIXME
             #			  N_("Your embedding area is unusually small.  core.img won't fit in it."));
