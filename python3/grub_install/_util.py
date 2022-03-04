@@ -52,22 +52,3 @@ def force_mkdir(path):
         os.mkdir(path)
     else:
         os.mkdir(path)              # path does not exist
-
-
-class Grub:
-
-
-
-    def grub_install_copy_files(source_dir, grubdir, platform):
-        pass
-
-    def grub_install_push_module(name):
-        pass
-
-    def probe_mods(disk):
-        pass
-
-
-
-    def grub_util_create_envblk_file(envfile):
-        pass
