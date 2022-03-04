@@ -198,7 +198,7 @@ class _Common:
 
         grub_install_copy_files(source)
 
-        grub_util_create_envblk_file("grub/grubenv")
+        Handy.grubCreateEnvBlkFile(os.path.join(p._bootDir, "grub", "grubenv"))
 
         push_module(fs)
 
