@@ -23,9 +23,9 @@
 
 import os
 import abc
-from platform import platform
 import shutil
 import pathlib
+from ._util import force_rm, force_mkdir
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallStatus
 from ._handy import Handy
 from ._source import Source
@@ -126,8 +126,18 @@ class Target(abc.ABC):
         assert isinstance(platform_type, PlatformType)
         
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            assert False
+            if platform_type == PlatformType.I386_PC:
+                _Bios.remove_platform(platform_type, self._dev)
+            else:
+                assert False
+            _Common.remove_platform(self, platform_type)
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            if platform_type == PlatformType.I386_PC:
+                _Bios.remove_platform(platform_type, self._dev)
+            elif Handy.isPlatformEfi(platform_type):
+                _Efi.remove_platform(platform_type, self._bootDir)
+            else:
+                assert False
             _Common.remove_platform(self, platform_type)
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             # FIXME
@@ -244,7 +254,7 @@ class _Common:
 
 
 
-    def remove_platform(p, platform_type, source):
+    def remove_platform(p, platform_type):
         assert False
 
     def check(p, auto_fix):
@@ -360,6 +370,10 @@ class _Bios:
         # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
         # grub_set_install_backup_ponr()
 
+    @staticmethod
+    def remove_platform(platform_type, bootDir):
+        pass
+
 
 class _Efi:
 
@@ -367,15 +381,21 @@ class _Efi:
 
     @staticmethod
     def install_platform(platform_type, source, bootDir):
-        # make efi dir
+        # create efi dir
         efiDir = os.path.join(bootDir, "EFI")
-        os.mkdir(efiDir)
+        force_mkdir(efiDir)
 
         # copy efi file
         efiFn = Handy.getStandardEfiFile(platform_type)
         efiFullfnSrc = os.path.join(source.get_platform_dir(platform_type), efiFn)
         efiFullfnDst = os.path.join(efiDir, efiFn)
         shutil.copy(efiFullfnSrc, efiFullfnDst)
+
+    @staticmethod
+    def remove_platform(platform_type, bootDir):
+        # remove efi dir
+        efiDir = os.path.join(bootDir, "EFI")
+        force_rm(efiDir)
 
 
 # class _Sparc:

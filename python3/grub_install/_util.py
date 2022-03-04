@@ -36,6 +36,35 @@ import tempfile
 import subprocess
 
 
+def force_rm(path):
+    if os.path.islink(path):
+        os.remove(path)
+    elif os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
+    elif os.path.lexists(path):
+        os.remove(path)             # other type of file, such as device node
+    else:
+        pass                        # path does not exist, do nothing
+
+
+def force_mkdir(path):
+    if os.path.islink(path):
+        os.remove(path)
+        os.mkdir(path)
+    elif os.path.isfile(path):
+        os.remove(path)
+        os.mkdir(path)
+    elif os.path.isdir(path):
+        pass                        # already exists
+    elif os.path.lexists(path):
+        os.remove(path)             # other type of file, such as device node
+        os.mkdir(path)
+    else:
+        os.mkdir(path)              # path does not exist
+
+
 class Grub:
 
     @staticmethod
