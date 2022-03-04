@@ -1,7 +1,13 @@
 import enum
 
 
-class Platform(enum.Enum):
+class MediaType(enum.Enum):
+    FLOPPY_DISK = enum.auto()
+    HARD_DISK = enum.auto()
+    ISO_FILE = enum.auto()
+
+
+class PlatformType(enum.Enum):
     I386_PC = "i386-pc"
     I386_EFI = "i386-efi"
     I386_QEMU = "i386-qemu"
@@ -26,3 +32,9 @@ class Platform(enum.Enum):
     MIPSEL_QEMU_MIPS = enum.auto()                          # FIXME
     RISCV32_EFI = enum.auto()                               # FIXME
     RISCV64_EFI = enum.auto()                               # FIXME
+
+
+class PlatformInstallStatus(enum.IntEnum):
+    BOOTABLE = enum.auto()
+    HAS_SOME_FILE = enum.auto()
+    NO_FILE_EXISTS = enum.auto()

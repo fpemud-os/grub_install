@@ -21,33 +21,175 @@
 # THE SOFTWARE.
 
 
+import os
 import abc
+from ._const import PlatformType, MediaType
 
 
 class Target(abc.ABC):
 
-    def __init__(self, name):
-        assert name in ["arm-coreboot", "arm-coreboot-vexpress", "arm-coreboot-veyron", "arm-uboot"] or \
-               name in ["arm64-efi"] or \
-               name in ["i386-coreboot", "i386-efi", "i386-ieee1275", "i386-multiboot", "i386-pc", "i386-pc-eltorito", "i386-pc-pxe", "i386-qemu", "i386-xen", "i386-xen_pvh"] or \
-               name in ["x86_64-efi", "x86_64_xen"]
+    def __init__(self, media_type, **kwargs):
+        assert isinstance(media_type, MediaType)
+        self._mediaType = media_type
 
-        self._name = name
-        # self.allow_floppy = XXX   # --allow-floppy
-        # self.themes = XXX         # --themes=THEMES
-        # self.locales = XXX        # --locales=LOCALES
-        # self.pubkey = XXX         # --pubkey=FILE
-        # self.modules = XXX        # --install-modules=MODULES
-        # self.fonts = XXX          # --fonts=FONTS
-        # self.compress = XXX       # --compress=no|xz|gz|lzo
-
-        # we won't support:
-        # 1. 
+        if self._mediaType == MediaType.FLOPPY_DISK:
+            assert False
+        elif self._mediaType == MediaType.HARD_DISK:
+            assert False
+        elif self._mediaType == MediaType.ISO_FILE:
+            assert False
+        else:
+            assert False
 
     @property
-    def name(self):
-        return self._name
+    def media_type(self):
+        return self._mediaType
 
+    @property
+    @abc.abstractmethod
+    def has_platform(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def is_platform_installed(self):
+        pass
+
+    @abc.abstractmethod
+    def install_platform(source, platform_type):
+        pass
+
+    @abc.abstractmethod
+    def remove_platform(source, platform_type):
+        pass
+
+    @abc.abstractmethod
+    def check(source, auto_fix=False):
+        pass
+
+
+
+
+class TargetCommon(Target):
+
+    # self.allow_floppy = XXX   # --allow-floppy
+    # self.themes = XXX         # --themes=THEMES
+    # self.locales = XXX        # --locales=LOCALES
+    # self.pubkey = XXX         # --pubkey=FILE
+    # self.modules = XXX        # --install-modules=MODULES
+    # self.fonts = XXX          # --fonts=FONTS
+    # self.compress = XXX       # --compress=no|xz|gz|lzo
+
+    # we won't support:
+    # 1. 
+
+
+    def __init__(self, boot_dir_path, hdd_dev=None):
+        assert boot_dir_path is not None
+        assert hdd_dev is not None
+
+        self._path = boot_dir_path
+        self._grubPath = os.path.join(self._path, "grub")
+        self._hdd = hdd_dev
+
+    @property
+    def boot_dir_path(self):
+        return self._path
+
+    @property
+    def supported_platforms(self):
+        ret = []
+        if os.path.isdir(self._grubPath):
+            for fn in os.listdir(self._grubPath):
+                for pt in PlatformType:
+                    if fn == pt.value:
+                        ret.append(pt)
+        return ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class BootDir:
+
+    def __init__(self, path, base_dir=None, grub_lib_dir=None, locale_dir=None):
+        assert path is not None
+        if base_dir is None:
+            base_dir = "/"
+        if grub_lib_dir is None:
+            grub_lib_dir = os.path.join(base_dir, "usr", "lib", "grub")
+        if locale_dir is None:
+            locale_dir = os.path.join(base_dir, "usr", "share", "locale")
+
+        self._path = os.path.realpath(path)
+        self._grubPath = os.path.join(self._path, "grub")
+        self._libDir = os.path.realpath(grub_lib_dir)
+        self._localeDir = os.path.realpath(locale_dir)
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def targets(self):
+        ret = []
+
+        if not os.path.isdir(self._grubPath):
+            return ret
+
+        for fn in os.listdir(self._grubPath):
+            if fn in ["locale", "fonts", "themes"]:
+                continue
+            if not os.path.isdir(os.path.join(self._grubPath, fn)):
+                continue
+            ret.append(fn)
+
+        return ret
+
+    def install(self, target, target_info):
+        pass
+
+    def check(self, auto_fix=False):
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+class Target_i386_pc(TargetCommon):
+
+    """This target needs to install boot code into harddisk boot sector"""
+
+    def write_boot_code(self, hdd_dev):
+        pass
+
+
+
+
+
+
+-        assert name in ["arm-coreboot", "arm-coreboot-vexpress", "arm-coreboot-veyron", "arm-uboot"] or \
+-               name in ["arm64-efi"] or \
+-               name in ["i386-coreboot", "i386-efi", "i386-ieee1275", "i386-multiboot", "i386-pc", "i386-pc-eltorito", "i386-pc-pxe", "i386-qemu", "i386-xen", "i386-xen_pvh"] or \
+-               name in ["x86_64-efi", "x86_64_xen"]
 
 
 # ia64-efi
@@ -75,37 +217,3 @@ class Target(abc.ABC):
 # sparc64-ieee1275-aout
 
 
-
-
-
-# static struct
-# {
-#   const char *cpu;
-#   const char *platform;
-# } platforms[GRUB_INSTALL_PLATFORM_MAX] =
-#   {
-#     [GRUB_INSTALL_PLATFORM_I386_PC] =          { "i386",    "pc"        },
-#     [GRUB_INSTALL_PLATFORM_I386_EFI] =         { "i386",    "efi"       },
-#     [GRUB_INSTALL_PLATFORM_I386_QEMU] =        { "i386",    "qemu"      },
-#     [GRUB_INSTALL_PLATFORM_I386_COREBOOT] =    { "i386",    "coreboot"  },
-#     [GRUB_INSTALL_PLATFORM_I386_MULTIBOOT] =   { "i386",    "multiboot" },
-#     [GRUB_INSTALL_PLATFORM_I386_IEEE1275] =    { "i386",    "ieee1275"  },
-#     [GRUB_INSTALL_PLATFORM_X86_64_EFI] =       { "x86_64",  "efi"       },
-#     [GRUB_INSTALL_PLATFORM_I386_XEN] =         { "i386",    "xen"       },
-#     [GRUB_INSTALL_PLATFORM_X86_64_XEN] =       { "x86_64",  "xen"       },
-#     [GRUB_INSTALL_PLATFORM_I386_XEN_PVH] =     { "i386",    "xen_pvh"   },
-#     [GRUB_INSTALL_PLATFORM_MIPSEL_LOONGSON] =  { "mipsel",  "loongson"  },
-#     [GRUB_INSTALL_PLATFORM_MIPSEL_QEMU_MIPS] = { "mipsel",  "qemu_mips" },
-#     [GRUB_INSTALL_PLATFORM_MIPS_QEMU_MIPS] =   { "mips",    "qemu_mips" },
-#     [GRUB_INSTALL_PLATFORM_MIPSEL_ARC] =       { "mipsel",  "arc"       },
-#     [GRUB_INSTALL_PLATFORM_MIPS_ARC] =         { "mips",    "arc"       },
-#     [GRUB_INSTALL_PLATFORM_SPARC64_IEEE1275] = { "sparc64", "ieee1275"  },
-#     [GRUB_INSTALL_PLATFORM_POWERPC_IEEE1275] = { "powerpc", "ieee1275"  },
-#     [GRUB_INSTALL_PLATFORM_IA64_EFI] =         { "ia64",    "efi"       },
-#     [GRUB_INSTALL_PLATFORM_ARM_EFI] =          { "arm",     "efi"       },
-#     [GRUB_INSTALL_PLATFORM_ARM64_EFI] =        { "arm64",   "efi"       },
-#     [GRUB_INSTALL_PLATFORM_ARM_UBOOT] =        { "arm",     "uboot"     },
-#     [GRUB_INSTALL_PLATFORM_ARM_COREBOOT] =     { "arm",     "coreboot"  },
-#     [GRUB_INSTALL_PLATFORM_RISCV32_EFI] =      { "riscv32", "efi"       },
-#     [GRUB_INSTALL_PLATFORM_RISCV64_EFI] =      { "riscv64", "efi"       },
-#   }; 

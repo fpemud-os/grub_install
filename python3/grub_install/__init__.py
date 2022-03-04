@@ -35,15 +35,9 @@ __author__ = "fpemud@sina.com (Fpemud)"
 __version__ = "0.0.1"
 
 
-class Platforms(enum.Enum):
-
-
-
-
-
-from ._core import StorageLayout
-from ._core import MountParam
-from ._core import BootDirRwController
+from ._core import Source
+from ._core import Target
+from ._core import Utils
 
 from ._core import get_supported_storage_layouts
 from ._core import get_current_storage_layout
