@@ -40,44 +40,30 @@ class Target(abc.ABC):
             assert False
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
             self._rootfsDir = kwargs.get("rootfs_dir", None)
-            self._bootDir = kwargs.get("boot_dir", None)
-            self._dev = kwargs.get("dev", None)
-            assert self._rootfsDir is not None or self._bootDir is not None
-            assert self._dev is not None
+            self._bootDir = kwargs.get("boot_dir", os.path.join(self._rootfsDir, "boot"))
+            self._dev = kwargs["dev"]
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
-            self._iso = kwargs.get("obj", None)
-            assert self._iso is not None
+            self._iso = kwargs.get["obj"]
         elif self._targetType == TargetType.ISO_DIR:
-            self._dir = kwargs.get("dir", None)
-            assert self._dir is not None
+            self._dir = kwargs["dir"]
+            self._bootDir = os.path.join(self._dir, "boot")
         else:
             assert False
 
         # self._platforms
         self._platforms = dict()
         if self._mode in [TargetAccessMode.R, TargetAccessMode.RW]:
-            def __init(bootDir):
-                grubDir = os.path.join(bootDir, "grub")
-                if os.path.isdir(grubDir):
-                    for fn in os.listdir(grubDir):
-                        for pt in PlatformType:
-                            if fn == pt.value:
-                                self._platforms[pt] = None
-
             if self._targetType == TargetType.MOUNTED_FDD_DEV:
                 assert False
             elif self._targetType == TargetType.MOUNTED_HDD_DEV:
-                if self._bootDir is not None:
-                    __init(self._bootDir)
-                else:
-                    __init(os.path.join(self._rootDir, "boot"))
+                _Common.init_platforms(self)
                 for pt in self._platforms:
                     pass
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 assert False                                                    # FIXME
             elif self._targetType == TargetType.ISO_DIR:
-                __init(os.paht.join(self._dir, "boot"))
+                _Common.init_platforms(self)
                 for pt in self._platforms:
                     pass
             else:
@@ -92,70 +78,103 @@ class Target(abc.ABC):
         return self._mode
 
     @property
-    @abc.abstractmethod
     def platforms(self):
         return self._platforms.keys()
 
-    @abc.abstractmethod
     def get_platform_install_status(self, platform_type):
         assert isinstance(platform_type, PlatformType)
         return self._platforms.get(platform_type, PlatformInstallStatus.NOT_EXIST)
 
-    @abc.abstractmethod
     def install_platform(platform_type, source):
-        assert isinstance(platform_type, PlatformType)
+        assert self.get_platform_install_status(platform_type) != PlatformInstallStatus.BOOTABLE
         assert isinstance(source, Source)
 
-    @abc.abstractmethod
-    def remove_platform(platform_type, source):
-        assert isinstance(platform_type, PlatformType)
-        assert isinstance(source, Source)
+        if self._targetType == TargetType.MOUNTED_FDD_DEV:
+            assert False
+        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            _Common.install_platform(self, platform_type, source)
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            # FIXME
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
+            _Common.install_platform(self, platform_type, source)
+        else:
+            assert False
 
-    @abc.abstractmethod
+    def remove_platform(platform_type):
+        assert isinstance(platform_type, PlatformType)
+        
+        if self._targetType == TargetType.MOUNTED_FDD_DEV:
+            assert False
+        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            _Common.remove_platform(self, platform_type)
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            # FIXME
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
+            _Common.remove_platform(self, platform_type)
+        else:
+            assert False
+
     def check(auto_fix=False):
-        pass
+        if self._targetType == TargetType.MOUNTED_FDD_DEV:
+            assert False
+        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            _Common.check(self, auto_fix)
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            # FIXME
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
+            _Common.check(self, auto_fix)
+        else:
+            assert False
 
-    @abc.abstractmethod
     def check_with_source(source, auto_fix=False):
-        pass
+        assert isinstance(source, Source)
+
+        if self._targetType == TargetType.MOUNTED_FDD_DEV:
+            assert False
+        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            _Common.check_with_source(self, source, auto_fix)
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            # FIXME
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
+            _Common.check_with_source(self, source, auto_fix)
+        else:
+            assert False
 
 
+class _Common:
 
-class TargetCommon(Target):
-
-    # self.allow_floppy = XXX   # --allow-floppy
-    # self.themes = XXX         # --themes=THEMES
-    # self.locales = XXX        # --locales=LOCALES
-    # self.pubkey = XXX         # --pubkey=FILE
-    # self.modules = XXX        # --install-modules=MODULES
-    # self.fonts = XXX          # --fonts=FONTS
-    # self.compress = XXX       # --compress=no|xz|gz|lzo
-
-    # we won't support:
-    # 1. 
-
-
-    def __init__(self, boot_dir_path, hdd_dev=None):
-        assert boot_dir_path is not None
-        assert hdd_dev is not None
-
-        self._path = boot_dir_path
-        self._grubPath = os.path.join(self._path, "grub")
-        self._hdd = hdd_dev
-
-    @property
-    def boot_dir_path(self):
-        return self._path
-
-    @property
-    def supported_platforms(self):
-        ret = []
-        if os.path.isdir(self._grubPath):
-            for fn in os.listdir(self._grubPath):
+    def init_platforms(p):
+        grubDir = os.path.join(p._bootDir, "grub")
+        if os.path.isdir(grubDir):
+            for fn in os.listdir(grubDir):
                 for pt in PlatformType:
                     if fn == pt.value:
-                        ret.append(pt)
-        return ret
+                        p._platforms[pt] = None
+
+    def install_platform(p, platform_type, source):
+        assert False
+
+    def remove_platform(p, platform_type, source):
+        assert False
+
+    def check(p, auto_fix):
+        grubDir = os.path.join(p._bootDir, "grub")
+        if os.path.isdir(grubDir):
+            pset = set([x.value for x in p._platforms])
+            fset = set(os.listdir(grubDir)) - set(["locale", "fonts", "themes"])
+            # FIXME: check every platform
+            # FIXME: check redundant files
+        else:
+            if len(p._platforms) > 0:
+                raise Exception("")     # FIXME
+
+    def check_with_source(p, source, auto_fix):
+        # FIXME
+        pass
 
 
 
@@ -164,9 +183,16 @@ class TargetCommon(Target):
 
 
 
+# self.allow_floppy = XXX   # --allow-floppy
+# self.themes = XXX         # --themes=THEMES
+# self.locales = XXX        # --locales=LOCALES
+# self.pubkey = XXX         # --pubkey=FILE
+# self.modules = XXX        # --install-modules=MODULES
+# self.fonts = XXX          # --fonts=FONTS
+# self.compress = XXX       # --compress=no|xz|gz|lzo
 
-
-
+# we won't support:
+# 1. 
 
 
 
