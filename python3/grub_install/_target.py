@@ -198,75 +198,7 @@ class _Common:
 
 
 
-class BootDir:
 
-    def __init__(self, path, base_dir=None, grub_lib_dir=None, locale_dir=None):
-        assert path is not None
-        if base_dir is None:
-            base_dir = "/"
-        if grub_lib_dir is None:
-            grub_lib_dir = os.path.join(base_dir, "usr", "lib", "grub")
-        if locale_dir is None:
-            locale_dir = os.path.join(base_dir, "usr", "share", "locale")
-
-        self._path = os.path.realpath(path)
-        self._grubPath = os.path.join(self._path, "grub")
-        self._libDir = os.path.realpath(grub_lib_dir)
-        self._localeDir = os.path.realpath(locale_dir)
-
-    @property
-    def path(self):
-        return self._path
-
-    @property
-    def targets(self):
-        ret = []
-
-        if not os.path.isdir(self._grubPath):
-            return ret
-
-        for fn in os.listdir(self._grubPath):
-            if fn in ["locale", "fonts", "themes"]:
-                continue
-            if not os.path.isdir(os.path.join(self._grubPath, fn)):
-                continue
-            ret.append(fn)
-
-        return ret
-
-    def install(self, target, target_info):
-        pass
-
-    def check(self, auto_fix=False):
-        pass
-
-
-
-
-
-
-
-
-
-
-
-
-class Target_i386_pc(TargetCommon):
-
-    """This target needs to install boot code into harddisk boot sector"""
-
-    def write_boot_code(self, hdd_dev):
-        pass
-
-
-
-
-
-
--        assert name in ["arm-coreboot", "arm-coreboot-vexpress", "arm-coreboot-veyron", "arm-uboot"] or \
--               name in ["arm64-efi"] or \
--               name in ["i386-coreboot", "i386-efi", "i386-ieee1275", "i386-multiboot", "i386-pc", "i386-pc-eltorito", "i386-pc-pxe", "i386-qemu", "i386-xen", "i386-xen_pvh"] or \
--               name in ["x86_64-efi", "x86_64_xen"]
 
 
 # ia64-efi
