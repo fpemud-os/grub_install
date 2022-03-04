@@ -261,7 +261,8 @@ class _Common:
 
 
     def remove_platform(p, platform_type):
-        assert False
+        platDir = os.path.join(p._bootDir, "grub", platform_type.value)
+        force_rm(platDir)
 
     def check(p, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
@@ -380,6 +381,45 @@ class _Bios:
     def remove_platform(platform_type, bootDir):
         pass
 
+    @staticmethod
+    def install_platform_for_iso(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
+
+        if 
+
+
+
+        char *output = grub_util_path_concat (3, boot_grub, "i386-pc", "eltorito.img");
+      load_cfg = grub_util_make_temporary_file ();
+
+
+
+      grub_install_push_module ("biosdisk");
+      grub_install_push_module ("iso9660");
+      grub_install_make_image_wrap (source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
+				    "/boot/grub", output,
+				    0, load_cfg,
+				    "i386-pc-eltorito", 0);
+      xorriso_push ("-boot-load-size");
+      xorriso_push ("4");
+      xorriso_push ("-boot-info-table");
+
+	      char *boot_hybrid = grub_util_path_concat (2, source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
+							 "boot_hybrid.img");
+	      xorriso_push ("--grub2-boot-info");
+	      xorriso_push ("--grub2-mbr");
+	      xorriso_push (boot_hybrid);
+
+  /** build multiboot core.img */
+  grub_install_push_module ("pata");
+  grub_install_push_module ("ahci");
+  grub_install_push_module ("at_keyboard");
+  make_image (GRUB_INSTALL_PLATFORM_I386_MULTIBOOT, "i386-multiboot", "i386-multiboot/core.elf");
+  grub_install_pop_module ();
+  grub_install_pop_module ();
+  grub_install_pop_module ();
+
+
+
 
 class _Efi:
 
@@ -402,6 +442,7 @@ class _Efi:
         # remove efi dir
         efiDir = os.path.join(bootDir, "EFI")
         force_rm(efiDir)
+
 
 
 # class _Sparc:

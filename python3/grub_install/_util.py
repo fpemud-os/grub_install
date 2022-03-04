@@ -38,7 +38,7 @@ def force_rm(path):
         pass                        # path does not exist, do nothing
 
 
-def force_mkdir(path):
+def force_mkdir(path, clear=False):
     if os.path.islink(path):
         os.remove(path)
         os.mkdir(path)
@@ -46,7 +46,8 @@ def force_mkdir(path):
         os.remove(path)
         os.mkdir(path)
     elif os.path.isdir(path):
-        pass                        # already exists
+        shutil.rmtree(path)
+        os.mkdir(path)
     elif os.path.lexists(path):
         os.remove(path)             # other type of file, such as device node
         os.mkdir(path)
