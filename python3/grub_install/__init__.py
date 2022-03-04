@@ -35,14 +35,14 @@ __author__ = "fpemud@sina.com (Fpemud)"
 __version__ = "0.0.1"
 
 
-from ._core import Source
-from ._core import Target
-from ._core import Utils
+from ._const import TargetType
+from ._const import TargetAccessMode
+from ._const import PlatformType
+from ._const import PlatformInstallStatus
 
-from ._core import get_supported_storage_layouts
-from ._core import get_current_storage_layout
-from ._core import detect_and_mount_storage_layout
-from ._core import create_and_mount_storage_layout
+from ._source import Source
+
+from ._target import Target
 
 from ._errors import CheckCode
 
