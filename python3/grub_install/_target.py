@@ -23,7 +23,7 @@
 
 import os
 import abc
-from ._const import PlatformType, TargetType
+from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallStatus
 
 
 class Target(abc.ABC):
@@ -35,6 +35,7 @@ class Target(abc.ABC):
         self._targetType = target_type
         self._mode = target_access_mode
 
+        # target specific variables
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
             assert False
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -53,6 +54,35 @@ class Target(abc.ABC):
         else:
             assert False
 
+        # self._platforms
+        self._platforms = dict()
+        if self._mode in [TargetAccessMode.R, TargetAccessMode.RW]:
+            def __init(bootDir):
+                grubDir = os.path.join(bootDir, "grub")
+                if os.path.isdir(grubDir):
+                    for fn in os.listdir(grubDir):
+                        for pt in PlatformType:
+                            if fn == pt.value:
+                                self._platforms[pt] = None
+
+            if self._targetType == TargetType.MOUNTED_FDD_DEV:
+                assert False
+            elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+                if self._bootDir is not None:
+                    __init(self._bootDir)
+                else:
+                    __init(os.path.join(self._rootDir, "boot"))
+                for pt in self._platforms:
+                    pass
+            elif self._targetType == TargetType.PYCDLIB_OBJ:
+                assert False                                                    # FIXME
+            elif self._targetType == TargetType.ISO_DIR:
+                __init(os.paht.join(self._dir, "boot"))
+                for pt in self._platforms:
+                    pass
+            else:
+                assert False
+
     @property
     def target_type(self):
         return self._targetType
@@ -64,19 +94,22 @@ class Target(abc.ABC):
     @property
     @abc.abstractmethod
     def platforms(self):
-        pass
+        return self._platforms.keys()
 
     @abc.abstractmethod
-    def get_platform_status(self, platform_type):
-        pass
+    def get_platform_install_status(self, platform_type):
+        assert isinstance(platform_type, PlatformType)
+        return self._platforms.get(platform_type, PlatformInstallStatus.NOT_EXIST)
 
     @abc.abstractmethod
     def install_platform(platform_type, source):
-        pass
+        assert isinstance(platform_type, PlatformType)
+        assert isinstance(source, Source)
 
     @abc.abstractmethod
     def remove_platform(platform_type, source):
-        pass
+        assert isinstance(platform_type, PlatformType)
+        assert isinstance(source, Source)
 
     @abc.abstractmethod
     def check(auto_fix=False):
