@@ -36,6 +36,32 @@ import tempfile
 import subprocess
 
 
+class Grub:
+
+    @staticmethod
+    def copy_boot_img_file(p, source, platform_type):
+        boot_img_src = os.path.join(source.get_platform_dir(platform_type), "boot.img")
+        boot_img = os.path.join(p._bootDir, "grub", "boot.img")
+        grub_install_copy_file(boot_img_src, boot_img, 1)
+
+
+    def grub_install_copy_files(source_dir, grubdir, platform):
+        pass
+
+    def grub_install_push_module(name):
+        pass
+
+    def probe_mods(disk):
+        pass
+
+
+
+    def grub_util_create_envblk_file(envfile):
+        pass
+
+
+
+
 class Util:
 
     diskPartTableMbr = "mbr"

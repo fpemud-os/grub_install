@@ -22,6 +22,7 @@
 
 
 import os
+from platform import platform
 from ._const import PlatformType
 
 
@@ -43,14 +44,19 @@ class Source:
             self._localeDir = locale_dir
         assert os.path.isdir(self._localeDir)
 
-    @property
-    def platforms(self):
-        ret = []
+        self._platforms = []
         for fn in os.listdir(self._libDir):
             for pt in PlatformType:
                 if fn == pt.value:
-                    ret.append(pt)
-        return ret
+                    self._platforms.append(pt)
+
+    @property
+    def platforms(self):
+        return self._platforms
+
+    def get_platform_dir(self, platform_type):
+        assert platform_type in self._platforms
+        return os.path.join(self._libDir, platform_type.value)
 
     def copy_to(self, platforms, dest_dir):
         # FIXME

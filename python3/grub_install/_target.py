@@ -23,7 +23,12 @@
 
 import os
 import abc
+from platform import platform
+import shutil
+import pathlib
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallStatus
+from ._handy import Handy
+from ._source import Source
 
 
 class Target(abc.ABC):
@@ -85,23 +90,39 @@ class Target(abc.ABC):
         assert isinstance(platform_type, PlatformType)
         return self._platforms.get(platform_type, PlatformInstallStatus.NOT_EXIST)
 
-    def install_platform(platform_type, source):
+    def install_platform(self, platform_type, source):
         assert self.get_platform_install_status(platform_type) != PlatformInstallStatus.BOOTABLE
         assert isinstance(source, Source)
 
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            assert False
+            _Common.install_platform(self, platform_type, source)
+            if platform_type == PlatformType.I386_PC:
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, False, True)
+            else:
+                assert False
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source)
+            if platform_type == PlatformType.I386_PC:
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, True)
+            elif Handy.isPlatformEfi(platform_type):
+                _Efi.install_platform(platform_type, source, self._bootDir)
+            else:
+                assert False
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             # FIXME
             assert False
         elif self._targetType == TargetType.ISO_DIR:
             _Common.install_platform(self, platform_type, source)
+            if platform_type == PlatformType.I386_PC:
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, False)
+            elif Handy.isPlatformEfi(platform_type):
+                _Efi.install_platform(platform_type, source, self._bootDir)
+            else:
+                assert False
         else:
             assert False
 
-    def remove_platform(platform_type):
+    def remove_platform(self, platform_type):
         assert isinstance(platform_type, PlatformType)
         
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
@@ -116,7 +137,7 @@ class Target(abc.ABC):
         else:
             assert False
 
-    def check(auto_fix=False):
+    def check(self, auto_fix=False):
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
             assert False
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -129,7 +150,7 @@ class Target(abc.ABC):
         else:
             assert False
 
-    def check_with_source(source, auto_fix=False):
+    def check_with_source(self, source, auto_fix=False):
         assert isinstance(source, Source)
 
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
@@ -156,7 +177,72 @@ class _Common:
                         p._platforms[pt] = None
 
     def install_platform(p, platform_type, source):
-        assert False
+        disk_module = None
+
+
+        grub_install_copy_files(source)
+
+        grub_util_create_envblk_file("grub/grubenv")
+
+        push_module(fs)
+
+
+        if disk_module == "ata":
+            push_module("pata")
+        elif disk_module = "native":
+            push_module("pata")
+            push_module("ahci")
+            push_module("ohci")
+            push_module("uhci")
+            push_module("ehci")
+            push_module("ubms")
+        else:
+            push_module(disk_module)
+
+        rm("grub/load.cfg")
+
+        push_module("search_fs_uuid") or push_module("search_fs_file")
+
+        if platform_type == PlatformType.I386_PC:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        elif platform_type == PlatformType.I386_QEMU:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformEfi(platform_type):
+            core_name = "core.efi"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformCoreboot(platform_type) or Handy.isPlatformXen(platform_type):
+            core_name = "core.elf"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformIeee1275(platform_type):
+            if platform_type in [PlatformType.I386_IEEE1275, PlatformType.POWERPC_IEEE1275]:
+                core_name = "core.elf"
+                mkimage_target = platform_type.value
+            elif platform_type == PlatformType.SPARC64_IEEE1275:
+                core_name = "core.img"
+                mkimage_target = "sparc64-ieee1275-raw"
+            else:
+                assert False
+        elif platform_type == PlatformType.I386_MULTIBOOT:
+            core_name = "core.elf"
+            mkimage_target = platform_type.value
+        elif platform_type in [PlatformType.MIPSEL_LOONGSON, PlatformType.MIPSEL_QEMU_MIPS, PlatformType.MIPS_QEMU_MIPS]:
+            core_name = "core.elf"
+            mkimage_target = platform_type.value + "-elf"
+        elif platform_type in [PlatformType.MIPSEL_ARC, PlatformType.MIPS_ARC, PlatformType.ARM_UBOOT]:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        else:
+            assert False
+
+        imgfile = "grub/<plat>/core_name"
+        grub_install_make_image_wrap(load_cfg, mkimage_target, imgfile)
+
+        # backwark compatible process
+
+
+
 
     def remove_platform(p, platform_type, source):
         assert False
@@ -175,6 +261,129 @@ class _Common:
     def check_with_source(p, source, auto_fix):
         # FIXME
         pass
+
+
+class _Bios:
+
+    @staticmethod
+    def install_platform(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
+        assert bHddOrFloppy
+
+        coreImgFile = os.path.join(bootDir, "grub", "core.img")
+
+        # copy boot.img file
+        bootImgFileSrc = os.path.join(source.get_platform_dir(platform_type), "boot.img")
+        bootImgFile = os.path.join(bootDir, "grub", "boot.img")
+        shutil.copy(bootImgFileSrc, bootImgFile)
+
+        # install into device bios mbr
+        if True:
+            bootBuf = pathlib.Path(bootImgFile).read_bytes()
+            if len(bootBuf) != Handy.GRUB_DISK_SECTOR_SIZE:
+                raise Exception("the size of '%s' is not %u" % (bootImgFile, Handy.GRUB_DISK_SECTOR_SIZE))
+
+            coreBuf = pathlib.Path(coreImgFile).read_bytes()
+            if len(coreBuf) < Handy.GRUB_DISK_SECTOR_SIZE:
+                raise Exception("the size of '%s' is too small" % (coreImgFile))
+            if len(coreBuf) > 0xFFFF * Handy.GRUB_DISK_SECTOR_SIZE:
+                raise Exception("the size of '%s' is too large" % (coreImgFile))
+            coreSectors = (len(coreBuf) + Handy.GRUB_DISK_SECTOR_SIZE - 1) // Handy.GRUB_DISK_SECTOR_SIZE
+
+            bootBuf = bytearray(bootBuf)
+            with open(dev, "rb") as f:
+                tmpBuf = f.read(Handy.GRUB_DISK_SECTOR_SIZE)
+
+                # Copy the possible DOS BPB.
+                s, e = Handy.GRUB_BOOT_MACHINE_BPB_START, Handy.GRUB_BOOT_MACHINE_BPB_END
+                bootBuf[s:e] = tmpBuf[s:e]
+
+                # If DEST_DRIVE is a hard disk, enable the workaround, which is
+                # for buggy BIOSes which don't pass boot drive correctly. Instead,
+                # they pass 0x00 or 0x01 even when booted from 0x80.
+                # Replace the jmp (2 bytes) with double nop's.
+                bootBuf[Handy.GRUB_BOOT_MACHINE_DRIVE_CHECK] = 0x90
+                bootBuf[Handy.GRUB_BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
+
+                # Copy the partition table.
+                s, e = Handy.GRUB_BOOT_MACHINE_WINDOWS_NT_MAGIC, Handy.GRUB_BOOT_MACHINE_PART_END
+                bootBuf[s:e] = tmpBuf[s:e]
+
+            # FIXME
+            # grub_util_warn ("%s", _("Attempting to install GRUB to a disk with multiple partition labels or both partition label and filesystem.  This is not supported yet."));
+
+            # FIXME
+            #   grub_util_error (_("%s appears to contain a %s filesystem which isn't known to "
+            # 		     "reserve space for DOS-style boot.  Installing GRUB there could "
+            # 		     "result in FILESYSTEM DESTRUCTION if valuable data is overwritten "
+            # 		     "by grub-setup (--skip-fs-probe disables this "
+            # 		     "check, use at your own risk)"), dest_dev->disk->name, fs->name);
+
+            # FIXME
+            #   grub_util_error (_("%s appears to contain a %s partition map which isn't known to "
+            # 		     "reserve space for DOS-style boot.  Installing GRUB there could "
+            # 		     "result in FILESYSTEM DESTRUCTION if valuable data is overwritten "
+            # 		     "by grub-setup (--skip-fs-probe disables this "
+            # 		     "check, use at your own risk)"), dest_dev->disk->name, ctx.dest_partmap->name);
+
+            # FIXME
+            #   grub_util_error (_("%s appears to contain a %s partition map and "
+            # 		     "LDM which isn't known to be a safe combination."
+            # 		     "  Installing GRUB there could "
+            # 		     "result in FILESYSTEM DESTRUCTION if valuable data"
+            # 		     " is overwritten "
+            # 		     "by grub-setup (--skip-fs-probe disables this "
+            # 		     "check, use at your own risk)"),
+            # 		   dest_dev->disk->name, ctx.dest_partmap->name);
+
+            # FIXME
+            #	grub_util_warn ("%s", _("Attempting to install GRUB to a partitionless disk or to a partition.  This is a BAD idea."));
+
+            # FIXME
+            #	grub_util_warn ("%s", _("Attempting to install GRUB to a disk with multiple partition labels.  This is not supported yet."));
+
+            # FIXME
+            #	grub_util_warn (_("Partition style `%s' doesn't support embedding"),
+
+            # FIXME
+            #	grub_util_warn (_("File system `%s' doesn't support embedding"),
+
+            nsec = coreSectors
+            maxsec = 2 * coreSectors    # add_rs_codes
+
+            if maxsec > ((0x78000 - Handy.GRUB_KERNEL_I386_PC_LINK_ADDR) // Handy.GRUB_DISK_SECTOR_SIZE)
+                maxsec = ((0x78000 - Handy.GRUB_KERNEL_I386_PC_LINK_ADDR) // Handy.GRUB_DISK_SECTOR_SIZE)
+
+            # FIXME
+            #			  N_("Your embedding area is unusually small.  core.img won't fit in it."));
+
+
+        # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
+        # grub_set_install_backup_ponr()
+
+
+class _Efi:
+
+    """We only support removable, and not upgrading NVRAM"""
+
+    @staticmethod
+    def install_platform(platform_type, source, bootDir):
+        # make efi dir
+        efiDir = os.path.join(bootDir, "EFI")
+        os.mkdir(efiDir)
+
+        # copy efi file
+        efiFn = Handy.getStandardEfiFile(platform_type)
+        efiFullfnSrc = os.path.join(source.get_platform_dir(platform_type), efiFn)
+        efiFullfnDst = os.path.join(efiDir, efiFn)
+        shutil.copy(efiFullfnSrc, efiFullfnDst)
+
+
+# class _Sparc:
+#
+#     @staticmethod
+#     def install_platform(p, platform_type, source):
+#         grub_util_sparc_setup("boot.img", "core.img", dev, force?, fs_probe?, allow_floppy?, add_rs_codes?, )
+#         grub_set_install_backup_ponr()
 
 
 
