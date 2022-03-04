@@ -38,12 +38,18 @@ class Target(abc.ABC):
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
             assert False
         elif self._targetType == TargetType.MOUNTED_HDD_DEV:
-            assert False
+            self._rootfsDir = kwargs.get("rootfs_dir", None)
+            self._bootDir = kwargs.get("boot_dir", None)
+            self._dev = kwargs.get("dev", None)
+            assert self._rootfsDir is not None or self._bootDir is not None
+            assert self._dev is not None
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
-            assert False
+            self._iso = kwargs.get("obj", None)
+            assert self._iso is not None
         elif self._targetType == TargetType.ISO_DIR:
-            assert False
+            self._dir = kwargs.get("dir", None)
+            assert self._dir is not None
         else:
             assert False
 
