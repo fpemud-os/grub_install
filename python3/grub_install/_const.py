@@ -1,10 +1,17 @@
 import enum
 
 
-class MediaType(enum.Enum):
-    FLOPPY_DISK = enum.auto()
-    HARD_DISK = enum.auto()
-    ISO_FILE = enum.auto()
+class TargetType(enum.Enum):
+    MOUNTED_FDD_DEV = enum.auto()            # floppy device
+    MOUNTED_HDD_DEV = enum.auto()            # hard-disk device
+    PYCDLIB_OBJ = enum.auto()                # pycdlib object
+    ISO_DIR = enum.auto()                    # directory containing files for a ISO
+
+
+class TargetAccessMode(enum.Enum):
+    R = enum.auto()
+    W = enum.auto()
+    RW = enum.auto()
 
 
 class PlatformType(enum.Enum):
@@ -34,7 +41,8 @@ class PlatformType(enum.Enum):
     RISCV64_EFI = enum.auto()                               # FIXME
 
 
-class PlatformInstallStatus(enum.IntEnum):
+class PlatformInstallStatus(enum.Enum):
     BOOTABLE = enum.auto()
-    HAS_SOME_FILE = enum.auto()
-    NO_FILE_EXISTS = enum.auto()
+    EXIST = enum.auto()
+    NOT_EXIST = enum.auto()
+

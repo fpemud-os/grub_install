@@ -23,50 +23,62 @@
 
 import os
 import abc
-from ._const import PlatformType, MediaType
+from ._const import PlatformType, TargetType
 
 
 class Target(abc.ABC):
 
-    def __init__(self, media_type, **kwargs):
-        assert isinstance(media_type, MediaType)
-        self._mediaType = media_type
+    def __init__(self, target_type, target_access_mode, **kwargs):
+        assert isinstance(target_type, TargetType)
+        assert isinstance(target_access_mode, TargetAccessMode)
 
-        if self._mediaType == MediaType.FLOPPY_DISK:
+        self._targetType = target_type
+        self._mode = target_access_mode
+
+        if self._targetType == TargetType.MOUNTED_FDD_DEV:
             assert False
-        elif self._mediaType == MediaType.HARD_DISK:
+        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
             assert False
-        elif self._mediaType == MediaType.ISO_FILE:
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
             assert False
         else:
             assert False
 
     @property
-    def media_type(self):
-        return self._mediaType
+    def target_type(self):
+        return self._targetType
+
+    @property
+    def target_access_mode(self):
+        return self._mode
 
     @property
     @abc.abstractmethod
-    def has_platform(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def is_platform_installed(self):
+    def platforms(self):
         pass
 
     @abc.abstractmethod
-    def install_platform(source, platform_type):
+    def get_platform_status(self, platform_type):
         pass
 
     @abc.abstractmethod
-    def remove_platform(source, platform_type):
+    def install_platform(platform_type, source):
         pass
 
     @abc.abstractmethod
-    def check(source, auto_fix=False):
+    def remove_platform(platform_type, source):
         pass
 
+    @abc.abstractmethod
+    def check(auto_fix=False):
+        pass
+
+    @abc.abstractmethod
+    def check_with_source(source, auto_fix=False):
+        pass
 
 
 
