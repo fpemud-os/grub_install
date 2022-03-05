@@ -300,7 +300,7 @@ class _Bios:
 
     @staticmethod
     def install_platform(platform_type, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
-        assert bFloppyOrHdd
+        assert bFloppyOrHdd and not bAllowFloppy and bAddRsCodes
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
 
