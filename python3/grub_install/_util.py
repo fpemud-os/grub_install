@@ -22,12 +22,8 @@
 
 
 import os
-import re
 import shutil
-import psutil
-import pathlib
 import filecmp
-import subprocess
 
 
 def force_rm(path):

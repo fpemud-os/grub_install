@@ -49,18 +49,18 @@ class PlatformType(enum.Enum):
     X86_64_XEN = "x86_64_xen"
     ARM_UBOOT = "arm-uboot"
     ARM_COREBOOT = "arm-coreboot"
-    ARM_EFI = enum.auto()                                   # FIXME
+    ARM_EFI = "arm-efi"
     ARM64_EFI = "arm64-efi"
-    IA64_EFI = enum.auto()                                  # FIXME
-    SPARC64_IEEE1275 = enum.auto()                          # FIXME
-    POWERPC_IEEE1275 = enum.auto()                          # FIXME
-    MIPS_ARC = enum.auto()                                  # FIXME
+    IA64_EFI = "ia64-efi"
+    POWERPC_IEEE1275 = "powerpc-ieee1275"
+    SPARC64_IEEE1275 = "sparc64-ieee1275"
+    MIPS_ARC = "mips-arc"
     MIPS_QEMU_MIPS = enum.auto()                            # FIXME
-    MIPSEL_ARC = enum.auto()                                # FIXME
-    MIPSEL_LOONGSON = enum.auto()                           # FIXME
+    MIPSEL_ARC = "mipsel-arc"
+    MIPSEL_LOONGSON = "mipsel-loongson"
     MIPSEL_QEMU_MIPS = enum.auto()                          # FIXME
-    RISCV32_EFI = enum.auto()                               # FIXME
-    RISCV64_EFI = enum.auto()                               # FIXME
+    RISCV32_EFI = "riscv32-efi"
+    RISCV64_EFI = "riscv64-efi"
 
 
 class PlatformInstallInfo:
