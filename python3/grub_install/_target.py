@@ -344,19 +344,18 @@ class _Bios:
     def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
-
-        if bOk:
+        if True:
             # check success
             platform_install_info.mbr_installed = True
-            platform_install_info.allow_floppy = bAllowFloppy
-            platform_install_info.rs_codes = bAddRsCodes
+            platform_install_info.allow_floppy = False
+            platform_install_info.rs_codes = False
         else:
             # check failed
             platform_install_info.status = platform_install_info.Status.EXIST
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
-        assert not bFloppyOrHdd and not bAllowFloppy and bAddRsCodes
+        assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
@@ -375,7 +374,6 @@ class _Bios:
                 raise Exception("the size of '%s' is too small" % (coreImgFile))
             if len(coreBuf) > 0xFFFF * Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is too large" % (coreImgFile))
-            coreSectors = (len(coreBuf) + Grub.DISK_SECTOR_SIZE - 1) // Grub.DISK_SECTOR_SIZE
 
             bootBuf = bytearray(bootBuf)
             with open(dev, "rb") as f:
@@ -398,60 +396,12 @@ class _Bios:
                     s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                     bootBuf[s:e] = tmpBuf[s:e]
 
-            # FIXME
-            # grub_util_warn ("%s", _("Attempting to install GRUB to a disk with multiple partition labels or both partition label and filesystem.  This is not supported yet."));
-
-            # FIXME
-            #   grub_util_error (_("%s appears to contain a %s filesystem which isn't known to "
-            # 		     "reserve space for DOS-style boot.  Installing GRUB there could "
-            # 		     "result in FILESYSTEM DESTRUCTION if valuable data is overwritten "
-            # 		     "by grub-setup (--skip-fs-probe disables this "
-            # 		     "check, use at your own risk)"), dest_dev->disk->name, fs->name);
-
-            # FIXME
-            #   grub_util_error (_("%s appears to contain a %s partition map which isn't known to "
-            # 		     "reserve space for DOS-style boot.  Installing GRUB there could "
-            # 		     "result in FILESYSTEM DESTRUCTION if valuable data is overwritten "
-            # 		     "by grub-setup (--skip-fs-probe disables this "
-            # 		     "check, use at your own risk)"), dest_dev->disk->name, ctx.dest_partmap->name);
-
-            # FIXME
-            #   grub_util_error (_("%s appears to contain a %s partition map and "
-            # 		     "LDM which isn't known to be a safe combination."
-            # 		     "  Installing GRUB there could "
-            # 		     "result in FILESYSTEM DESTRUCTION if valuable data"
-            # 		     " is overwritten "
-            # 		     "by grub-setup (--skip-fs-probe disables this "
-            # 		     "check, use at your own risk)"),
-            # 		   dest_dev->disk->name, ctx.dest_partmap->name);
-
-            # FIXME
-            #	grub_util_warn ("%s", _("Attempting to install GRUB to a partitionless disk or to a partition.  This is a BAD idea."));
-
-            # FIXME
-            #	grub_util_warn ("%s", _("Attempting to install GRUB to a disk with multiple partition labels.  This is not supported yet."));
-
-            # FIXME
-            #	grub_util_warn (_("Partition style `%s' doesn't support embedding"),
-
-            # FIXME
-            #	grub_util_warn (_("File system `%s' doesn't support embedding"),
-
-            nsec = coreSectors
-            if not bAddRsCodes:
-                maxsec = coreSectors
-            else:
-                maxsec = 2 * coreSectors
-
-            if maxsec > ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
-                maxsec = ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
-
-            # FIXME
-            #			  N_("Your embedding area is unusually small.  core.img won't fit in it."));
-
-
-        # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
-        # grub_set_install_backup_ponr()
+            with open(dev, "w") as f:
+                if bAddRsCodes:
+                    assert False
+                else:
+                    f.write(bootBuf)
+                    f.write(coreBuf)
 
         platform_install_info.mbr_installed = bInstallMbr
         platform_install_info.allow_floppy = bAllowFloppy
