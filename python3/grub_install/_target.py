@@ -346,7 +346,22 @@ class _Bios:
     def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
-        bOk = True
+        coreImgFile = os.path.join(bootDir, "grub", "core.img")
+        bootImgFile = os.path.join(bootDir, "grub", "boot.img")
+
+        bOk = False
+        while True:
+            if not os.path.exists(bootImgFile):
+                break
+            bootBuf = pathlib.Path(bootImgFile).read_bytes()
+            if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
+                break
+
+            if not os.path.exists(coreImgFile):
+                break
+            coreBuf = pathlib.Path(coreImgFile).read_bytes()
+            if not (Grub.DISK_SECTOR_SIZE < len(coreBuf) < 0xFFFF * Grub.DISK_SECTOR_SIZE):
+                break
 
 
 
