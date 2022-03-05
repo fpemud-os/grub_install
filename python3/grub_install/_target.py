@@ -25,7 +25,6 @@ import os
 import abc
 import shutil
 import pathlib
-import subprocess
 from ._util import force_rm, force_mkdir, rmdir_if_empty, mnt_probe
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._handy import Handy, Grub
@@ -457,7 +456,7 @@ class _Efi:
         grubPlatDir = os.path.join(grubDir, platform_type.value)
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
-        efiFn = Handy.getStandardEfiFile(platform_type)
+        efiFn = Handy.getStandardEfiFilename(platform_type)
 
         # create efi dir
         force_mkdir(efiDir)
@@ -473,7 +472,7 @@ class _Efi:
     def remove_platform(platform_type, bootDir):
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
-        efiFn = Handy.getStandardEfiFile(platform_type)
+        efiFn = Handy.getStandardEfiFilename(platform_type)
 
         # remove efi file
         force_rm(os.path.join(efiDirLv2, efiFn))
@@ -500,12 +499,7 @@ class _Efi:
 
 
 
-# self.allow_floppy = XXX   # --allow-floppy
-# self.themes = XXX         # --themes=THEMES
-# self.locales = XXX        # --locales=LOCALES
 # self.pubkey = XXX         # --pubkey=FILE
-# self.modules = XXX        # --install-modules=MODULES
-# self.fonts = XXX          # --fonts=FONTS
 # self.compress = XXX       # --compress=no|xz|gz|lzo
 
 # we won't support:
