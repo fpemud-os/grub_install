@@ -450,8 +450,8 @@ class _Bios:
                 # they pass 0x00 or 0x01 even when booted from 0x80.
                 if not bAllowFloppy and not bFloppyOrHdd:
                     # Replace the jmp (2 bytes) with double nop's.
-                    bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK] = 0x90
-                    bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
+                    s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+1
+                    bootBuf[s:e] == b'\x90\x90'
 
                 # Copy the partition table.
                 if not bAllowFloppy and not bFloppyOrHdd:
