@@ -537,8 +537,7 @@ class _Efi:
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir):
-        grubDir = os.path.join(bootDir, "grub")
-        grubPlatDir = os.path.join(grubDir, platform_type.value)
+        grubPlatDir = os.path.join(bootDir, "grub", platform_type.value)
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFilename(platform_type)
