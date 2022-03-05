@@ -173,7 +173,7 @@ class Target(abc.ABC):
         force_rm(os.path.join(grubDir, "fonts"))
         force_rm(os.path.join(grubDir, "themes"))
 
-    def install_env_file(self):
+    def touch_env_file(self):
         grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
         if not os.path.exists(grubEnvFile):
             Grub.createEnvBlkFile(grubEnvFile)
@@ -292,8 +292,6 @@ class _Common:
     def check_with_source(p, source, auto_fix):
         # FIXME
         pass
-
-
 
 
 class _Bios:
