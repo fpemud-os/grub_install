@@ -24,8 +24,7 @@
 import os
 import glob
 import shutil
-import pathlib
-from ._util import truncate_dir, compare_files, compare_directories
+from ._util import compare_files, compare_directories
 from ._const import PlatformType
 from ._errors import ParseSourceError, CopySourceError
 
@@ -130,7 +129,7 @@ class Source:
         assert self.supports(self.CAP_THEMES)
         return "starfield"
 
-    def copy_to(self, dest_dir):
+    def copy_into(self, dest_dir):
         assert os.path.isdir(dest_dir)
 
         # copy platform directories
