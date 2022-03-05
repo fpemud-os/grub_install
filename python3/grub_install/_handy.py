@@ -22,9 +22,7 @@
 
 
 import os
-import re
 import shutil
-import struct
 import psutil
 import subprocess
 from ._util import force_mkdir
@@ -263,30 +261,6 @@ class Grub:
     @staticmethod
     def makeCoreImage(source, platform_type, load_cfg_file, mkimage_target, module_list, out_path):
         subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source.get_platform_dir(platform_type), "-o", out_path] + module_list)
-
-    @staticmethod
-    def targetBytesToHost(platform_type, buf, len):
-        assert len in [8, 16, 32, 64]
-
-        bol = Handy.isPlatformBigEndianOrLittleEndian(platform_type)
-        if len == 8:
-            assert len(buf) == 1
-            ret = struct.unpack("", buf)
-
-
-
-        elif len == 16:
-            assert len(buf) == 2
-        elif len == 32:
-            assert len(buf) == 4
-        elif len == 64:
-            assert len(buf) == 8
-        else:
-            assert False
-
-    @staticmethod
-    def hostToTargetBytes(platform_type, num, len):
-        bol = Handy.isPlatformBigEndianOrLittleEndian(platform_type)
 
     @staticmethod
     def probeMnt(dir):
