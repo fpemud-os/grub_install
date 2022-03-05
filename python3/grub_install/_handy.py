@@ -128,7 +128,7 @@ class Grub:
         os.rename(tmpName, name)
 
     @staticmethod
-    def copyGrubPlatformFiles(platform_type, source, grub_dir):
+    def copyPlatformFiles(platform_type, source, grub_dir):
         # install modules and friends
         platDirSrc = os.path.join(source.get_platform_dir(platform_type))
         platDirDst = os.path.join(grub_dir, platform_type.value)
@@ -140,39 +140,37 @@ class Grub:
             shutil.copy(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
 
     @staticmethod
-    def copyGrubDataFiles(source, grub_dir, locales=None, fonts=None, themes=None):
-        # install locales
-        if locales is not None:
-            assert source.supports(source.CAP_NLS)
-            dstDir = os.path.join(grub_dir, "locales")
-            force_mkdir(dstDir, clear=True)
-            if locales == "*":
-                for ln, fullfn in source.get_all_locale_files():
-                    shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (ln)))
-            else:
-                for x in locales:
-                    shutil.copy(source.get_locale_file(x), "%s.mo" % (x))
+    def copyLocaleFiles(source, grub_dir, locales):
+        assert source.supports(source.CAP_NLS)
+        dstDir = os.path.join(grub_dir, "locales")
+        force_mkdir(dstDir, clear=True)
+        if locales == "*":
+            for ln, fullfn in source.get_all_locale_files():
+                shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (ln)))
+        else:
+            for x in locales:
+                shutil.copy(source.get_locale_file(x), "%s.mo" % (x))
 
-        # install fonts
-        if fonts is not None:
-            assert source.supports(source.CAP_FONTS)
-            dstDir = os.path.join(grub_dir, "fonts")
-            force_mkdir(dstDir, clear=True)
-            if fonts == "*":
-                for fullfn in source.get_all_font_files():
-                    shutil.copy(fullfn, dstDir)
-            else:
-                for x in fonts:
-                    shutil.copy(source.get_font_file(x), dstDir)
+    @staticmethod
+    def copyFontFiles(source, grub_dir, fonts):
+        assert source.supports(source.CAP_FONTS)
+        dstDir = os.path.join(grub_dir, "fonts")
+        force_mkdir(dstDir, clear=True)
+        if fonts == "*":
+            for fullfn in source.get_all_font_files():
+                shutil.copy(fullfn, dstDir)
+        else:
+            for x in fonts:
+                shutil.copy(source.get_font_file(x), dstDir)
 
-        # install themes
-        if themes is not None:
-            assert source.supports(source.CAP_THEMES)
-            dstDir = os.path.join(grub_dir, "themes")
-            force_mkdir(dstDir, clear=True)
-            if themes == "*":
-                for fullfn in source.get_all_theme_directories():
-                    shutil.copytree(fullfn, dstDir)
-            else:
-                for x in themes:
-                    shutil.copytree(source.get_theme_directory(x), dstDir)
+    @staticmethod
+    def copyThemeFiles(source, grub_dir, themes):
+        assert source.supports(source.CAP_THEMES)
+        dstDir = os.path.join(grub_dir, "themes")
+        force_mkdir(dstDir, clear=True)
+        if themes == "*":
+            for fullfn in source.get_all_theme_directories():
+                shutil.copytree(fullfn, dstDir)
+        else:
+            for x in themes:
+                shutil.copytree(source.get_theme_directory(x), dstDir)

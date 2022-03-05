@@ -153,6 +153,23 @@ class Target(abc.ABC):
 
         del self._platforms[platform_type]
 
+    def install_data(self, source, locales=None, fonts=None, themes=None):
+        grubDir = os.path.join(self._bootDir, "grub")
+        force_mkdir(grubDir)
+
+        if locales is not None:
+            Grub.copyLocaleFiles(source, grubDir, locales)
+        if fonts is not None:
+            Grub.copyFontFiles(source, grubDir, fonts)
+        if themes is not None:
+            Grub.copyThemeFiles(source, grubDir, themes)
+
+    def remove_data(self):
+        grubDir = os.path.join(self._bootDir, "grub")
+        force_rm(os.path.join(grubDir, "locale"))
+        force_rm(os.path.join(grubDir, "fonts"))
+        force_rm(os.path.join(grubDir, "themes"))
+
     def check(self, auto_fix=False):
         if self._targetType == TargetType.MOUNTED_FDD_DEV:
             assert False
@@ -417,6 +434,14 @@ class _Bios:
   grub_install_pop_module ();
   grub_install_pop_module ();
   grub_install_pop_module ();
+  make_image_fwdisk (GRUB_INSTALL_PLATFORM_I386_IEEE1275, "i386-ieee1275", "ofwx86.elf");
+
+  grub_install_push_module ("part_apple");
+  make_image_fwdisk (GRUB_INSTALL_PLATFORM_POWERPC_IEEE1275, "powerpc-ieee1275", "powerpc-ieee1275/core.elf");
+  grub_install_pop_module ();
+
+  make_image_fwdisk (GRUB_INSTALL_PLATFORM_SPARC64_IEEE1275,
+		     "sparc64-ieee1275-cdcore", "sparc64-ieee1275/core.img");
 
 
 

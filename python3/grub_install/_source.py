@@ -97,6 +97,12 @@ class Source:
         assert os.path.exists(ret)
         return ret
 
+    def get_default_font(self):
+        assert self.supports(self.CAP_FONTS)
+        ret = "unicode"
+        assert os.path.exists(os.path.join(self._shareDir, ret + ".pf2"))
+        return ret
+
     def get_all_theme_directories(self):
         assert self.supports(self.CAP_THEMES)
         return glob.glob(os.path.join(self._themesDir, "*"))
@@ -105,6 +111,12 @@ class Source:
         assert self.supports(self.CAP_THEMES)
         ret = os.path.join(self._themesDir, theme_name)
         assert os.path.isdir(ret)
+        return ret
+
+    def get_default_theme(self):
+        assert self.supports(self.CAP_THEMES)
+        ret = "starfield"
+        assert os.path.exists(os.path.join(self._themesDir, ret))
         return ret
 
     def copy_to(self, platforms, dest_dir):
