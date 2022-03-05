@@ -240,7 +240,7 @@ class Grub:
         dstDir = os.path.join(grub_dir, "fonts")
         force_mkdir(dstDir, clear=True)
         if fonts == "*":
-            for fullfn in source.get_all_font_files():
+            for fn, fullfn in source.get_all_font_files():
                 shutil.copy(fullfn, dstDir)
         else:
             for x in fonts:
@@ -252,7 +252,7 @@ class Grub:
         dstDir = os.path.join(grub_dir, "themes")
         force_mkdir(dstDir, clear=True)
         if themes == "*":
-            for fullfn in source.get_all_theme_directories():
+            for tn, fullfn in source.get_all_theme_directories():
                 shutil.copytree(fullfn, dstDir)
         else:
             for x in themes:
