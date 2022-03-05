@@ -64,6 +64,11 @@ def rmdir_if_empty(path):
         os.rmdir(path)
 
 
+def truncate_dir(path):
+    for fn in os.listdir(path):
+        force_rm(os.path.join(path, fn))
+
+
 def mnt_probe(dir):
     assert os.path.isabs(dir) and not dir.endswith("/")
     dir = dir + "/"

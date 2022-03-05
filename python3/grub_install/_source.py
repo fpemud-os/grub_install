@@ -23,6 +23,8 @@
 
 import os
 import glob
+import shutil
+from ._util import truncate_dir
 from ._const import PlatformType
 from ._errors import SourceError
 
@@ -38,26 +40,16 @@ class Source:
             base_dir = "/"
 
         self._libDir = os.path.join(base_dir, "usr", "lib", "grub")
-        if not os.path.isdir(self._libDir):
-            raise SourceError("directory %s does not exist" % (self._libDir))
-
         self._shareDir = os.path.join(base_dir, "usr", "share", "grub")
-        if not os.path.isdir(self._shareDir):
-            raise SourceError("directory %s does not exist" % (self._shareDir))
-
         self._localeDir = os.path.join(base_dir, "usr", "share", "locale")
-
         self._themesDir = os.path.join(base_dir, "usr", "share", "grub", "themes")
 
-        self._platforms = []
-        for fn in os.listdir(self._libDir):
-            for pt in PlatformType:
-                if fn == pt.value:
-                    self._platforms.append(pt)
-
-    @property
-    def platforms(self):
-        return self._platforms
+        # check
+        if not os.path.isdir(self._libDir):
+            raise SourceError("directory %s does not exist" % (self._libDir))
+        if not os.path.isdir(self._shareDir):
+            raise SourceError("directory %s does not exist" % (self._shareDir))
+        self.get_all_platform_directories()
 
     def supports(self, key):
         if key == self.CAP_NLS:
@@ -69,7 +61,17 @@ class Source:
         else:
             assert False
 
-    def get_platform_dir(self, platform_type):
+    def get_all_platform_directories(self):
+        ret = dict()
+        for fullfn in glob.glob(os.path.join(self._libDir, "*")):
+            n = os.path.basename(fullfn)
+            try:
+                ret[PlatformType(n)] = fullfn
+            except ValueError:
+                raise SourceError("invalid platform directory %s" % (fullfn))
+        return ret
+
+    def get_platform_directory(self, platform_type):
         assert platform_type in self._platforms
         return os.path.join(self._libDir, platform_type.value)
 
@@ -126,6 +128,16 @@ class Source:
         assert self.supports(self.CAP_THEMES)
         return "starfield"
 
-    def copy_to(self, platforms, dest_dir):
-        # FIXME
-        assert False
+    def copy_to(self, dest_dir):
+        assert os.path.isdir(dest_dir)
+
+        os.makedirs(os.path.join(dest_dir, "usr", "lib", "grub"), exist_ok=True)
+            
+
+
+
+        shutil.copytree()
+
+
+
+
