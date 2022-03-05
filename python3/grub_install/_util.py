@@ -22,8 +22,11 @@
 
 
 import os
+import re
+import copy
 import shutil
 import psutil
+import subprocess
 
 
 def force_rm(path):
@@ -61,12 +64,30 @@ def rmdir_if_empty(path):
         os.rmdir(path)
 
 
-def fs_probe(dir):
+def mnt_probe(dir):
     assert os.path.isabs(dir) and not dir.endswith("/")
     dir = dir + "/"
-    ret = []
+
+    tlist = []
     for p in psutil.disk_partitions():
         if dir.startswith(p.mountpoint):
-            ret.append(p)
-    ret.sort(key=lambda x: len(x.mountpoint))
-    return ret[-1].fstype
+            tlist.append(p)
+    tlist.sort(key=lambda x: len(x.mountpoint))
+    ret = tlist[-1]
+
+    out = subprocess.check_output(["blkid", tlist.device])
+    m = re.search(r'\bUUID="(\S*)"\B', out, re.M)
+    if m is not None:
+        fsUuid = m.group(1)
+    else:
+        fsUuid = None
+
+    class Mnt:
+        def __init__(self, dev, mnt_pt, fs_name, fs_uuid, mnt_opts):
+            self.dev = dev
+            self.mnt_pt = mnt_pt
+            self.fs_name = fs_name
+            self.fs_uuid = fs_uuid
+            self.mnt_opts = mnt_opts
+
+    return Mnt(ret.device, ret.mountpoint, ret.fstype, fsUuid, ret.opts)

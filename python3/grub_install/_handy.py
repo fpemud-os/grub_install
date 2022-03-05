@@ -22,8 +22,8 @@
 
 
 import os
-from platform import platform
 import shutil
+import subprocess
 from ._util import force_mkdir
 from ._const import PlatformType
 
@@ -122,6 +122,49 @@ class Grub:
     KERNEL_I386_PC_LINK_ADDR = 0x9000
 
     @staticmethod
+    def getGrubFsName(fs_name):
+        if fs_name == "vfat":
+            return "fat"
+        return fs_name
+
+    @staticmethod
+    def getCoreImgNameAndTarget(platform_type):
+        if platform_type == PlatformType.I386_PC:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        elif platform_type == PlatformType.I386_QEMU:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformEfi(platform_type):
+            core_name = "core.efi"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformCoreboot(platform_type) or Handy.isPlatformXen(platform_type):
+            core_name = "core.elf"
+            mkimage_target = platform_type.value
+        elif Handy.isPlatformIeee1275(platform_type):
+            if platform_type in [PlatformType.I386_IEEE1275, PlatformType.POWERPC_IEEE1275]:
+                core_name = "core.elf"
+                mkimage_target = platform_type.value
+            elif platform_type == PlatformType.SPARC64_IEEE1275:
+                core_name = "core.img"
+                mkimage_target = "sparc64-ieee1275-raw"
+            else:
+                assert False
+        elif platform_type == PlatformType.I386_MULTIBOOT:
+            core_name = "core.elf"
+            mkimage_target = platform_type.value
+        elif platform_type in [PlatformType.MIPSEL_LOONGSON, PlatformType.MIPSEL_QEMU_MIPS, PlatformType.MIPS_QEMU_MIPS]:
+            core_name = "core.elf"
+            mkimage_target = platform_type.value + "-elf"
+        elif platform_type in [PlatformType.MIPSEL_ARC, PlatformType.MIPS_ARC, PlatformType.ARM_UBOOT]:
+            core_name = "core.img"
+            mkimage_target = platform_type.value
+        else:
+            assert False
+
+        return (core_name, mkimage_target)
+
+    @staticmethod
     def createEnvBlkFile(name):
         DEFAULT_ENVBLK_SIZE = 1024
         GRUB_ENVBLK_SIGNATURE = "# GRUB Environment Block\n"
@@ -183,3 +226,7 @@ class Grub:
         else:
             for x in themes:
                 shutil.copytree(source.get_theme_directory(x), dstDir)
+
+    @staticmethod
+    def make_image(source_dir, load_cfg_file, mkimage_target, out_path):
+        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source_dir, "-o", out_path])

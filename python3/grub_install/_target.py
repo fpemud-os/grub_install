@@ -25,7 +25,8 @@ import os
 import abc
 import shutil
 import pathlib
-from ._util import force_rm, force_mkdir, rmdir_if_empty, fs_probe
+import subprocess
+from ._util import force_rm, force_mkdir, rmdir_if_empty, mnt_probe
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._handy import Handy, Grub
 from ._source import Source
@@ -172,6 +173,15 @@ class Target(abc.ABC):
         force_rm(os.path.join(grubDir, "fonts"))
         force_rm(os.path.join(grubDir, "themes"))
 
+    def install_env_file(self):
+        grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
+        if not os.path.exists(grubEnvFile):
+            Grub.createEnvBlkFile(grubEnvFile)
+
+    def remove_env_file(self):
+        grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
+        force_rm(grubEnvFile)
+
     def check(self, auto_fix=False):
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.check(self, auto_fix)
@@ -209,7 +219,16 @@ class _Common:
                         p._platforms[pt].status = PlatformInstallInfo.Status.BOOTABLE
 
     def install_platform(p, platform_type, source):
-        # step 1
+        mnt = mnt_probe(p._bootDir)
+        if mnt.fs_uuid is None:
+            raise Exception("")     # FIXME
+
+        grubDir = os.path.join(p._bootDir, "grub")
+        relGrubDir = grubDir.replace(mnt.mnt_pt, "")
+
+        moduleList = []
+
+        # disk module
         if platform_type == PlatformType.I386_PC:
             disk_module = "biosdisk"
         elif platform_type == PlatformType.I386_MULTIBOOT:
@@ -223,76 +242,37 @@ class _Common:
         else:
             disk_module = None
 
-        fsName = fs_probe(p._bootDir)
-        if Handy.isPlatformEfi(platform_type):
-            if fsName != "vfat":
-                raise Exception("%s doesn't look like an EFI partition" % (p._bootDir))
-
-
-
-        grub_install_copy_files(source)
-
-        Grub.createEnvBlkFile(os.path.join(p._bootDir, "grub", "grubenv"))
-
-        push_module(fs)
-
-
-        if disk_module == "ata":
-            push_module("pata")
-        elif disk_module = "native":
-            push_module("pata")
-            push_module("ahci")
-            push_module("ohci")
-            push_module("uhci")
-            push_module("ehci")
-            push_module("ubms")
-        else:
-            push_module(disk_module)
-
-        rm("grub/load.cfg")
-
-        push_module("search_fs_uuid") or push_module("search_fs_file")
-
-        if platform_type == PlatformType.I386_PC:
-            core_name = "core.img"
-            mkimage_target = platform_type.value
-        elif platform_type == PlatformType.I386_QEMU:
-            core_name = "core.img"
-            mkimage_target = platform_type.value
-        elif Handy.isPlatformEfi(platform_type):
-            core_name = "core.efi"
-            mkimage_target = platform_type.value
-        elif Handy.isPlatformCoreboot(platform_type) or Handy.isPlatformXen(platform_type):
-            core_name = "core.elf"
-            mkimage_target = platform_type.value
-        elif Handy.isPlatformIeee1275(platform_type):
-            if platform_type in [PlatformType.I386_IEEE1275, PlatformType.POWERPC_IEEE1275]:
-                core_name = "core.elf"
-                mkimage_target = platform_type.value
-            elif platform_type == PlatformType.SPARC64_IEEE1275:
-                core_name = "core.img"
-                mkimage_target = "sparc64-ieee1275-raw"
-            else:
-                assert False
-        elif platform_type == PlatformType.I386_MULTIBOOT:
-            core_name = "core.elf"
-            mkimage_target = platform_type.value
-        elif platform_type in [PlatformType.MIPSEL_LOONGSON, PlatformType.MIPSEL_QEMU_MIPS, PlatformType.MIPS_QEMU_MIPS]:
-            core_name = "core.elf"
-            mkimage_target = platform_type.value + "-elf"
-        elif platform_type in [PlatformType.MIPSEL_ARC, PlatformType.MIPS_ARC, PlatformType.ARM_UBOOT]:
-            core_name = "core.img"
-            mkimage_target = platform_type.value
+        if disk_module is None:
+            pass
+        elif disk_module == "biosdisk":
+            moduleList.append("biosdisk")
+        elif disk_module == "native":
+            moduleList += ["pata"]                              # for IDE harddisk
+            moduleList += ["ahci"]                              # for SCSI harddisk
+            moduleList += ["ohci", "uhci", "ehci", "ubms"]      # for USB harddisk
         else:
             assert False
 
-        imgfile = "grub/<plat>/core_name"
-        grub_install_make_image_wrap(load_cfg, mkimage_target, imgfile)
+        # fs module
+        if Handy.isPlatformEfi(platform_type):
+            if mnt.fs_name != "vfat":
+                raise Exception("%s doesn't look like an EFI partition" % (p._bootDir))
+        moduleList.append(Grub.getGrubFsName(mnt.fs_name))
 
-        # backwark compatible process
+        # install files
+        Grub.copyPlatformFiles(platform_type, source, grubDir)
 
+        # generate load.cfg for core.img
+        loadCfgFile = os.path.join(grubDir, platform_type.value, "load.cfg")
+        with open(loadCfgFile, "w") as f:
+            moduleList.append("search_fs_uuid")
+            f.write("search.fs_uuid %s root %s\n" % (mnt.fs_uuid, ""))  # FIXME: should add hints to raise performance
+            f.write("set prefix=($root)'%s'\n" % (relGrubDir))          # FIXME: relGrubDir should be escaped
 
-
+        # make core.img
+        coreName, mkimageTarget = Grub.getCoreImgNameAndTarget()
+        coreImgFile = os.path.join(grubDir, platform_type.value, coreName)
+        subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimageTarget, "-d", source.get_platform_dir(platform_type), "-o", coreImgFile])
 
     def remove_platform(p, platform_type):
         platDir = os.path.join(p._bootDir, "grub", platform_type.value)
@@ -312,6 +292,8 @@ class _Common:
     def check_with_source(p, source, auto_fix):
         # FIXME
         pass
+
+
 
 
 class _Bios:
@@ -473,6 +455,8 @@ class _Efi:
 
     @staticmethod
     def install_platform(platform_type, source, bootDir):
+        grubDir = os.path.join(bootDir, "grub")
+        grubPlatDir = os.path.join(grubDir, platform_type.value)
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFile(platform_type)
@@ -484,7 +468,8 @@ class _Efi:
         force_mkdir(efiDirLv2)
 
         # copy efi file
-        shutil.copy(os.path.join(source.get_platform_dir(platform_type), efiFn), os.path.join(efiDirLv2, efiFn))
+        coreName = Grub.getCoreImgNameAndTarget()[0]
+        shutil.copy(os.path.join(grubPlatDir, coreName), os.path.join(efiDirLv2, efiFn))
 
     @staticmethod
     def remove_platform(platform_type, bootDir):
