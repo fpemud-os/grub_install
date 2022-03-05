@@ -59,22 +59,22 @@ class Target(abc.ABC):
         if self._mode in [TargetAccessMode.R, TargetAccessMode.RW]:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
                 _Common.init_platforms(self)
-                for k, v in self._platforms:
+                for k, v in self._platforms.items():
                     if k == PlatformType.I386_PC:
-                        _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, self._dev)
+                        _Bios.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir, self._dev)
                     elif Handy.isPlatformEfi(k):
-                        _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                        _Efi.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir)
                     else:
                         assert False
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 assert False                                                    # FIXME
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
-                for k, v in self._platforms:
+                for k, v in self._platforms.items():
                     if k == PlatformType.I386_PC:
-                        _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, None)
+                        _Bios.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir, None)
                     elif Handy.isPlatformEfi(k):
-                        _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                        _Efi.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir)
                     else:
                         assert False
             else:
@@ -111,12 +111,11 @@ class Target(abc.ABC):
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                ret.allow_floppy = kwargs.get("allow_floppy", False)
-                ret.rs_codes = kwargs.get("rs_codes", True)
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
                                        True,                                                # bInstallMbr
                                        False,                                               # bFloppyOrHdd
-                                       ret.allow_floppy, ret.rs_codes)
+                                       kwargs.get("allow_floppy", False),
+                                       kwargs.get("rs_codes", True))
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, ret, source, self._bootDir)
             else:
@@ -127,12 +126,11 @@ class Target(abc.ABC):
         elif self._targetType == TargetType.ISO_DIR:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                ret.allow_floppy = kwargs.get("allow_floppy", False)
-                ret.rs_codes = kwargs.get("rs_codes", True)
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
                                        False,                                               # bInstallMbr
                                        False,                                               # bFloppyOrHdd
-                                       ret.allow_floppy, ret.rs_codes)
+                                       kwargs.get("allow_floppy", False),
+                                       kwargs.get("rs_codes", True))
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, ret, source, self._bootDir)
             else:
@@ -304,9 +302,17 @@ class _Common:
 class _Bios:
 
     @staticmethod
-    def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
+    def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
-        # FIXME
+
+
+        if bOk:
+            # check success
+            platform_install_info.allow_floppy = bAllowFloppy
+            platform_install_info.rs_codes = bAddRsCodes
+        else:
+            # check failed
+            platform_install_info.status = platform_install_info.Status.EXIST
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
@@ -407,6 +413,9 @@ class _Bios:
         # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
         # grub_set_install_backup_ponr()
 
+        platform_install_info.allow_floppy = bAllowFloppy
+        platform_install_info.rs_codes = bAddRsCodes
+
     @staticmethod
     def remove_platform(platform_type, bootDir):
         pass
@@ -464,7 +473,7 @@ class _Efi:
     """We only support removable, and not upgrading NVRAM"""
 
     @staticmethod
-    def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
+    def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
         coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget()[0])
