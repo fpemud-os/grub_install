@@ -210,7 +210,7 @@ class Target(abc.ABC):
             self.remove_platform(k)
         self.remove_data()
 
-        # remove cruft files
+        # remove remaining cruft files
         _Efi.remove_crufts(self._bootDir)
         _Common.remove_crufts(self)
 
