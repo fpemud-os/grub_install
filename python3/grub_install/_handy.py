@@ -74,7 +74,7 @@ class Handy:
         ]
 
     @staticmethod
-    def getStandardEfiFile(platform_type):
+    def getStandardEfiFilename(platform_type):
         # The specification makes stricter requirements of removable
         #  devices, in order that only one image can be automatically loaded
         #  from them.  The image must always reside under /EFI/BOOT, and it

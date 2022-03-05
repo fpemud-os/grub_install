@@ -453,7 +453,7 @@ class _Bios:
         # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
         # grub_set_install_backup_ponr()
 
-        platform_install_info.mbr_installed = True
+        platform_install_info.mbr_installed = bInstallMbr
         platform_install_info.allow_floppy = bAllowFloppy
         platform_install_info.rs_codes = bAddRsCodes
 
