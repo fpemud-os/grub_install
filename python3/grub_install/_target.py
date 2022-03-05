@@ -97,10 +97,15 @@ class Target(abc.ABC):
         assert self.get_platform_install_info(platform_type).status != PlatformInstallInfo.Status.BOOTABLE
         assert isinstance(source, Source)
 
+        ret = PlatformInstallInfo()
+        ret.status = PlatformInstallInfo.Status.BOOTABLE
+
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, True)
+                ret.allow_floppy = kwargs.get("allow_floppy", False)
+                ret.rs_codes = kwargs.get("rs_codes", True)
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, True, ret.allow_floppy, ret.rs_codes)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, source, self._bootDir)
             else:
@@ -111,7 +116,9 @@ class Target(abc.ABC):
         elif self._targetType == TargetType.ISO_DIR:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, False)
+                ret.allow_floppy = kwargs.get("allow_floppy", False)
+                ret.rs_codes = kwargs.get("rs_codes", True)
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, False, True, ret.allow_floppy, ret.rs_codes)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, source, self._bootDir)
             else:
@@ -119,7 +126,7 @@ class Target(abc.ABC):
         else:
             assert False
 
-        self._platforms[platform_type] = PlatformInstallInfo.Status.BOOTABLE
+        self._platforms[platform_type] = ret
 
     def remove_platform(self, platform_type):
         assert isinstance(platform_type, PlatformType)
@@ -286,7 +293,7 @@ class _Common:
 class _Bios:
 
     @staticmethod
-    def install_platform(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
+    def install_platform(platform_type, source, bootDir, dev, bInstallMbr, bHddOrFloppy, bAllowFloppy, bAddRsCodes):
         assert bHddOrFloppy
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
@@ -320,9 +327,10 @@ class _Bios:
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
                 # for buggy BIOSes which don't pass boot drive correctly. Instead,
                 # they pass 0x00 or 0x01 even when booted from 0x80.
-                # Replace the jmp (2 bytes) with double nop's.
-                bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK] = 0x90
-                bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
+                if not bAllowFloppy:
+                    # Replace the jmp (2 bytes) with double nop's.
+                    bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK] = 0x90
+                    bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
 
                 # Copy the partition table.
                 s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
@@ -368,7 +376,10 @@ class _Bios:
             #	grub_util_warn (_("File system `%s' doesn't support embedding"),
 
             nsec = coreSectors
-            maxsec = 2 * coreSectors    # add_rs_codes
+            if not bAddRsCodes:
+                maxsec = coreSectors
+            else:
+                maxsec = 2 * coreSectors
 
             if maxsec > ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
                 maxsec = ((0x78000 - Grub.KERNEL_I386_PC_LINK_ADDR) // Grub.DISK_SECTOR_SIZE)
