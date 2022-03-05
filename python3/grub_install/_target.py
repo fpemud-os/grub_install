@@ -343,6 +343,7 @@ class _Bios:
 
         if bOk:
             # check success
+            platform_install_info.mbr_installed = True
             platform_install_info.allow_floppy = bAllowFloppy
             platform_install_info.rs_codes = bAddRsCodes
         else:
@@ -351,7 +352,7 @@ class _Bios:
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
-        assert bFloppyOrHdd and not bAllowFloppy and bAddRsCodes
+        assert not bFloppyOrHdd and not bAllowFloppy and bAddRsCodes
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
@@ -448,6 +449,7 @@ class _Bios:
         # grub_util_bios_setup("boot.img", "core.img", dev, fs_probe, True, )
         # grub_set_install_backup_ponr()
 
+        platform_install_info.mbr_installed = True
         platform_install_info.allow_floppy = bAllowFloppy
         platform_install_info.rs_codes = bAddRsCodes
 
