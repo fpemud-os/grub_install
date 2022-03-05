@@ -23,7 +23,6 @@
 
 import os
 import glob
-from platform import platform
 from ._const import PlatformType
 
 
