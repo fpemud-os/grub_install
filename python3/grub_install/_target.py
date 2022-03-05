@@ -266,10 +266,12 @@ class _Common:
         grubDir = os.path.join(p._bootDir, "grub")
         if os.path.isdir(grubDir):
             for fn in os.listdir(grubDir):
-                for pt in PlatformType:
-                    if fn == pt.value:
-                        p._platforms[pt] = PlatformInstallInfo()
-                        p._platforms[pt].status = PlatformInstallInfo.Status.BOOTABLE
+                try:
+                    obj = PlatformInstallInfo()
+                    obj.status = PlatformInstallInfo.Status.BOOTABLE
+                    p._platforms[PlatformType(fn)] = obj
+                except ValueError:
+                    pass
 
     @staticmethod
     def install_platform(p, platform_type, source):
