@@ -211,8 +211,8 @@ class Target(abc.ABC):
         self.remove_data()
 
         # remove remaining cruft files
-        _Efi.remove_crufts(self._bootDir)
-        _Common.remove_crufts(self)
+        _Efi.remove_remaining_crufts(self._bootDir)
+        _Common.remove_remaining_crufts(self)
 
     def check(self, auto_fix=False):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
@@ -317,7 +317,7 @@ class _Common:
         force_rm(platDir)
 
     @staticmethod
-    def remove_crufts(p):
+    def remove_remaining_crufts(p):
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
@@ -573,7 +573,7 @@ class _Efi:
         rmdir_if_empty(efiDir)
 
     @staticmethod
-    def remove_crufts(bootDir):
+    def remove_remaining_crufts(bootDir):
         force_rm(os.path.join(bootDir, "EFI"))
 
 
