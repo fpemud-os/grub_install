@@ -378,39 +378,40 @@ class _Bios:
         if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getMbrGapSizeThreshold()):
             raise TargetError("the size of '%s' is invalid" % (coreImgFile))
 
-        tmpBootBuf = None
-        tmpCoreBuf = None
-        with open(dev, "rb") as f:
-            tmpBootBuf = f.read(Grub.DISK_SECTOR_SIZE)
-            tmpCoreBuf = f.read(len(coreBuf))
+        if dev is not None:
+            tmpBootBuf = None
+            tmpCoreBuf = None
+            with open(dev, "rb") as f:
+                tmpBootBuf = f.read(Grub.DISK_SECTOR_SIZE)
+                tmpCoreBuf = f.read(len(coreBuf))
 
-        s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
-        if tmpBootBuf[:s1] != bootBuf[:s1]:
-            raise TargetError("invalid MBR record content")
+            s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+            if tmpBootBuf[:s1] != bootBuf[:s1]:
+                raise TargetError("invalid MBR record content")
 
-        s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
-        if tmpBootBuf[e1:s2] != bootBuf[e1:s2]:
-            raise TargetError("invalid MBR record content")
+            s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
+            if tmpBootBuf[e1:s2] != bootBuf[e1:s2]:
+                raise TargetError("invalid MBR record content")
 
-        if tmpBootBuf[s2:e2] == b'\x90\x90':
-            bAllowFloppy = False
-        elif tmpBootBuf[s2:e2] == bootBuf[s2:e2]:
-            bAllowFloppy = True
-        else:
-            raise TargetError("invalid MBR record content")
+            if tmpBootBuf[s2:e2] == b'\x90\x90':
+                bAllowFloppy = False
+            elif tmpBootBuf[s2:e2] == bootBuf[s2:e2]:
+                bAllowFloppy = True
+            else:
+                raise TargetError("invalid MBR record content")
 
-        s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
-        if tmpBootBuf[e2:s3] != bootBuf[e2:s3]:
-            raise TargetError("invalid MBR record content")
+            s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+            if tmpBootBuf[e2:s3] != bootBuf[e2:s3]:
+                raise TargetError("invalid MBR record content")
 
-        if tmpBootBuf[e3:] != bootBuf[e3:]:
-            raise TargetError("invalid MBR record content")
+            if tmpBootBuf[e3:] != bootBuf[e3:]:
+                raise TargetError("invalid MBR record content")
 
-        if tmpCoreBuf != coreBuf:
-            raise TargetError("invalid on-disk core.img content")
+            if tmpCoreBuf != coreBuf:
+                raise TargetError("invalid on-disk core.img content")
 
-        platform_install_info.mbr_installed = True
-        platform_install_info.allow_floppy = bAllowFloppy
+        platform_install_info.mbr_installed = (dev is not None)
+        platform_install_info.allow_floppy = True if dev is None else bAllowFloppy
         platform_install_info.rs_codes = False
 
     @classmethod
