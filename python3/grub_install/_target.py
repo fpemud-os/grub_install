@@ -29,6 +29,7 @@ import parted
 import pathlib
 from ._util import force_rm, force_mkdir, rmdir_if_empty, compare_files
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
+from ._errors import TargetError
 from ._handy import Handy, Grub
 from ._source import Source
 
@@ -62,23 +63,39 @@ class Target(abc.ABC):
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
                 _Common.init_platforms(self)
                 for k, v in self._platforms.items():
-                    if k == PlatformType.I386_PC:
-                        _Bios.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir, self._dev)
-                    elif Handy.isPlatformEfi(k):
-                        _Efi.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir)
-                    else:
-                        assert False
+                    try:
+                        if k == PlatformType.I386_PC:
+                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, self._dev)
+                        elif Handy.isPlatformEfi(k):
+                            _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                        else:
+                            assert False
+                    except TargetError as e:
+                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
             elif self._targetType == TargetType.PYCDLIB_OBJ:
-                assert False                                                    # FIXME
+                _PyCdLib.init_platforms(self)
+                for k, v in self._platforms.items():
+                    try:
+                        if k == PlatformType.I386_PC:
+                            pass
+                        elif Handy.isPlatformEfi(k):
+                            pass
+                        else:
+                            assert False
+                    except TargetError as e:
+                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
                 for k, v in self._platforms.items():
-                    if k == PlatformType.I386_PC:
-                        _Bios.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir, None)
-                    elif Handy.isPlatformEfi(k):
-                        _Efi.check_and_fill_platform_install_info(k, v, self._targetType, self._bootDir)
-                    else:
-                        assert False
+                    try:
+                        if k == PlatformType.I386_PC:
+                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, None)
+                        elif Handy.isPlatformEfi(k):
+                            _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                        else:
+                            assert False
+                    except TargetError as e:
+                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
             else:
                 assert False
 
@@ -104,9 +121,7 @@ class Target(abc.ABC):
         if platform_type in self._platforms:
             return self._platforms[platform_type]
         else:
-            ret = PlatformInstallInfo()
-            ret.status = PlatformInstallInfo.Status.NOT_EXIST
-            return ret
+            return _newNotExistPlatformInstallInfo()
 
     def install_platform(self, platform_type, source, **kwargs):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
@@ -343,64 +358,58 @@ class _Common:
 class _Bios:
 
     @classmethod
-    def check_and_fill_platform_install_info(cls, platform_type, platform_install_info, target_type, bootDir, dev):
+    def fill_platform_install_info(cls, platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
-        coreImgFile = os.path.join(bootDir, "grub", "core.img")
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
-        bAllowFloppy = None
+        coreImgFile = os.path.join(bootDir, "grub", Grub.getCoreImgNameAndTarget(platform_type)[0])
 
-        bOk = False
-        while True:
-            if not os.path.exists(bootImgFile):
-                break
-            bootBuf = pathlib.Path(bootImgFile).read_bytes()
-            if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
-                break
+        if not os.path.exists(bootImgFile):
+            raise TargetError("'%s' does not exist" % (bootImgFile))
+        bootBuf = pathlib.Path(bootImgFile).read_bytes()
+        if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
+            raise TargetError("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
 
-            if not os.path.exists(coreImgFile):
-                break
-            coreBuf = pathlib.Path(coreImgFile).read_bytes()
-            if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getMbrGapSizeThreshold()):
-                break
+        if not os.path.exists(coreImgFile):
+            raise TargetError("'%s' does not exist" % (coreImgFile))
+        coreBuf = pathlib.Path(coreImgFile).read_bytes()
+        if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getMbrGapSizeThreshold()):
+            raise TargetError("the size of '%s' is invalid" % (coreImgFile))
 
-            with open(dev, "rb") as f:
-                tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
+        tmpBootBuf = None
+        tmpCoreBuf = None
+        with open(dev, "rb") as f:
+            tmpBootBuf = f.read(Grub.DISK_SECTOR_SIZE)
+            tmpCoreBuf = f.read(len(coreBuf))
 
-                s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
-                if tmpBuf[:s1] != bootBuf[:s1]:
-                    break
+        s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+        if tmpBootBuf[:s1] != bootBuf[:s1]:
+            raise TargetError("invalid MBR record content")
 
-                s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
-                if tmpBuf[e1:s2] != bootBuf[e1:s2]:
-                    break
-                if tmpBuf[s2:e2] == b'\x90\x90':
-                    bAllowFloppy = False
-                else:
-                    if tmpBuf[s2:e2] != bootBuf[s2:e2]:
-                        break
-                    bAllowFloppy = True
+        s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
+        if tmpBootBuf[e1:s2] != bootBuf[e1:s2]:
+            raise TargetError("invalid MBR record content")
 
-                s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
-                if tmpBuf[e2:s3] != bootBuf[e2:s3]:
-                    break
-
-                if tmpBuf[e3:] != bootBuf[e3:]:
-                    break
-
-                if coreBuf != f.read(len(coreBuf)):
-                    break
-
-            bOk = True
-
-        if bOk:
-            # check success
-            platform_install_info.mbr_installed = True
-            platform_install_info.allow_floppy = bAllowFloppy
-            platform_install_info.rs_codes = False
+        if tmpBootBuf[s2:e2] == b'\x90\x90':
+            bAllowFloppy = False
+        elif tmpBootBuf[s2:e2] == bootBuf[s2:e2]:
+            bAllowFloppy = True
         else:
-            # check failed
-            platform_install_info.status = platform_install_info.Status.EXIST
+            raise TargetError("invalid MBR record content")
+
+        s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+        if tmpBootBuf[e2:s3] != bootBuf[e2:s3]:
+            raise TargetError("invalid MBR record content")
+
+        if tmpBootBuf[e3:] != bootBuf[e3:]:
+            raise TargetError("invalid MBR record content")
+
+        if tmpCoreBuf != coreBuf:
+            raise TargetError("invalid on-disk core.img content")
+
+        platform_install_info.mbr_installed = True
+        platform_install_info.allow_floppy = bAllowFloppy
+        platform_install_info.rs_codes = False
 
     @classmethod
     def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
@@ -487,26 +496,21 @@ class _Efi:
     """We only support removable, and not upgrading NVRAM"""
 
     @staticmethod
-    def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
+    def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
         coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget()[0])
         efiFullfn = os.path.join(bootDir, "EFI", "BOOT", Handy.getStandardEfiFilename(platform_type))
 
-        # check
-        bOk = True
-        if bOk and not os.path.exists(efiFullfn):
-            bOk = False
-        if bOk and not compare_files(coreFullfn, efiFullfn):
-            bOk = False
+        if not os.path.exists(coreFullfn):
+            raise TargetError("%s does not exist" % (coreFullfn))
+        if not os.path.exists(efiFullfn):
+            raise TargetError("%s does not exist" % (efiFullfn))
+        if compare_files(coreFullfn, efiFullfn):
+            raise TargetError("%s and %s are different" % (coreFullfn, efiFullfn))
 
-        if bOk:
-            # check success
-            platform_install_info.removable = True
-            platform_install_info.nvram = False
-        else:
-            # check failed
-            platform_install_info.status = platform_install_info.Status.EXIST
+        platform_install_info.removable = True
+        platform_install_info.nvram = False
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir):
@@ -547,6 +551,26 @@ class _Efi:
     @staticmethod
     def remove_remaining_crufts(bootDir):
         force_rm(os.path.join(bootDir, "EFI"))
+
+
+class _PyCdLib:
+
+    @staticmethod
+    def init_platforms(p):
+        pass
+
+
+def _newUnbootablePlatformInstallInfo(unbootable_reason):
+    ret = PlatformInstallInfo()
+    ret.status = PlatformInstallInfo.Status.UNBOOTABLE
+    ret.unbootable_reason = unbootable_reason
+    return ret
+
+
+def _newNotExistPlatformInstallInfo():
+    ret = PlatformInstallInfo()
+    ret.status = PlatformInstallInfo.Status.NOT_EXIST
+    return ret
 
 
 # class _Sparc:

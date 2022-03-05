@@ -67,7 +67,7 @@ class PlatformInstallInfo:
 
     class Status(enum.Enum):
         BOOTABLE = enum.auto()
-        EXIST = enum.auto()
+        UNBOOTABLE = enum.auto()
         NOT_EXIST = enum.auto()
 
     def __init__(self):
