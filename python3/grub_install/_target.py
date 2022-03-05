@@ -77,9 +77,11 @@ class Target(abc.ABC):
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            pass
+                            # FIXME
+                            assert False
                         elif Handy.isPlatformEfi(k):
-                            pass
+                            # FIXME
+                            assert False
                         else:
                             assert False
                     except TargetError as e:
@@ -361,8 +363,6 @@ class _Bios:
 
     @classmethod
     def fill_platform_install_info(cls, platform_type, platform_install_info, target_type, bootDir, dev):
-        assert platform_install_info.status == platform_install_info.Status.BOOTABLE
-
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
         coreImgFile = os.path.join(bootDir, "grub", Grub.getCoreImgNameAndTarget(platform_type)[0])
 
@@ -499,8 +499,6 @@ class _Efi:
 
     @staticmethod
     def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
-        assert platform_install_info.status == platform_install_info.Status.BOOTABLE
-
         coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget()[0])
         efiFullfn = os.path.join(bootDir, "EFI", "BOOT", Handy.getStandardEfiFilename(platform_type))
 
