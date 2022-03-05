@@ -57,7 +57,7 @@ class Target(abc.ABC):
         else:
             assert False
 
-        # self._platforms
+        # fill self._platforms
         self._platforms = dict()
         if self._mode in [TargetAccessMode.R, TargetAccessMode.RW]:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -109,10 +109,6 @@ class Target(abc.ABC):
 
     @property
     def platforms(self):
-        return self._platforms.keys()
-
-    @property
-    def bootable_platforms(self):
         return [k for k, v in self._platforms.items() if v.status == PlatformInstallInfo.Status.BOOTABLE]
 
     def get_platform_install_info(self, platform_type):
