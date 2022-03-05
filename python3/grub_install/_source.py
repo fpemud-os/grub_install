@@ -26,7 +26,7 @@ import glob
 import shutil
 from ._util import compare_files, compare_directories
 from ._const import PlatformType
-from ._errors import ParseSourceError, CopySourceError
+from ._errors import SourceError, CopySourceError
 
 
 class Source:
@@ -47,9 +47,9 @@ class Source:
 
         # check
         if not os.path.isdir(self._libDir):
-            raise ParseSourceError("directory %s does not exist" % (self._libDir))
+            raise SourceError("directory %s does not exist" % (self._libDir))
         if not os.path.isdir(self._shareDir):
-            raise ParseSourceError("directory %s does not exist" % (self._shareDir))
+            raise SourceError("directory %s does not exist" % (self._shareDir))
         self.get_all_platform_directories()
 
     def supports(self, key):
@@ -69,7 +69,7 @@ class Source:
             try:
                 ret[PlatformType(n)] = fullfn
             except ValueError:
-                raise ParseSourceError("invalid platform directory %s" % (fullfn))
+                raise SourceError("invalid platform directory %s" % (fullfn))
         return ret
 
     def get_platform_directory(self, platform_type):
