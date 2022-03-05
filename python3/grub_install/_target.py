@@ -449,21 +449,26 @@ class _Efi:
 
     @staticmethod
     def install_platform(platform_type, source, bootDir):
-        # create efi dir
         efiDir = os.path.join(bootDir, "EFI")
+        efiFn = Handy.getStandardEfiFile(platform_type)
+
+        # create efi dir
         force_mkdir(efiDir)
 
         # copy efi file
-        efiFn = Handy.getStandardEfiFile(platform_type)
-        efiFullfnSrc = os.path.join(source.get_platform_dir(platform_type), efiFn)
-        efiFullfnDst = os.path.join(efiDir, efiFn)
-        shutil.copy(efiFullfnSrc, efiFullfnDst)
+        shutil.copy(os.path.join(source.get_platform_dir(platform_type), efiFn), os.path.join(efiDir, efiFn))
 
     @staticmethod
     def remove_platform(platform_type, bootDir):
-        # remove efi dir
         efiDir = os.path.join(bootDir, "EFI")
-        force_rm(efiDir)
+        efiFn = Handy.getStandardEfiFile(platform_type)
+
+        # remove efi file
+        force_rm(os.path.join(efiDir, efiFn))
+
+        # remove empty efi dir
+        if len(os.listdir(efiDir)) == 0:
+            force_rm(efiDir)
 
 
 
