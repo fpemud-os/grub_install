@@ -121,7 +121,6 @@ class Target(abc.ABC):
 
     def install_platform(self, platform_type, source, **kwargs):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
-        assert self.get_platform_install_info(platform_type).status != PlatformInstallInfo.Status.BOOTABLE
         assert isinstance(source, Source)
 
         ret = PlatformInstallInfo()
@@ -131,12 +130,14 @@ class Target(abc.ABC):
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
-                                       True,                                                # bInstallMbr
                                        False,                                               # bFloppyOrHdd
+                                       kwargs.get("bootsector", True),                      # bInstallMbr
                                        kwargs.get("allow_floppy", False),
                                        kwargs.get("rs_codes", True))
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.install_platform(platform_type, ret, source, self._bootDir)
+                _Efi.install_platform(platform_type, ret, source, self._bootDir,
+                                      kwargs.get("removable", True),
+                                      kwargs.get("update_nvram", False))
             else:
                 assert False
         elif self._targetType == TargetType.PYCDLIB_OBJ:
@@ -146,12 +147,14 @@ class Target(abc.ABC):
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
-                                       False,                                               # bInstallMbr
                                        False,                                               # bFloppyOrHdd
-                                       kwargs.get("allow_floppy", False),
-                                       kwargs.get("rs_codes", True))
+                                       False,                                               # bInstallMbr
+                                       False,
+                                       False)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.install_platform(platform_type, ret, source, self._bootDir)
+                _Efi.install_platform(platform_type, ret, source, self._bootDir,
+                                      kwargs.get("removable", True),
+                                      False)
             else:
                 assert False
         else:
@@ -408,9 +411,9 @@ class _Bios:
         platform_install_info.rs_codes = False
 
     @classmethod
-    def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
+    def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bFloppyOrHdd, bInstallMbr, bAllowFloppy, bAddRsCodes):
         assert _Bios._isValidDisk(dev)
-        assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes
+        assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
@@ -509,7 +512,9 @@ class _Efi:
         platform_install_info.nvram = False
 
     @staticmethod
-    def install_platform(platform_type, platform_install_info, source, bootDir):
+    def install_platform(platform_type, platform_install_info, source, bootDir, bRemovable, bUpdateNvram):
+        assert bRemovable and not bUpdateNvram          # FIXME
+
         grubPlatDir = os.path.join(bootDir, "grub", platform_type.value)
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
@@ -526,8 +531,8 @@ class _Efi:
         shutil.copy(os.path.join(grubPlatDir, coreName), os.path.join(efiDirLv2, efiFn))
 
         # fill custom attributes
-        platform_install_info.removable = True
-        platform_install_info.nvram = False
+        platform_install_info.removable = bRemovable
+        platform_install_info.nvram = bUpdateNvram
 
     @staticmethod
     def remove_platform(platform_type, bootDir):

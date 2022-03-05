@@ -32,8 +32,8 @@ class TargetType(enum.Enum):
 
 class TargetAccessMode(enum.Enum):
     R = enum.auto()
-    W = enum.auto()
     RW = enum.auto()
+    W = enum.auto()
 
 
 class PlatformType(enum.Enum):
