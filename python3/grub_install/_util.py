@@ -70,35 +70,6 @@ def truncate_dir(path):
         force_rm(os.path.join(path, fn))
 
 
-def mnt_probe(dir):
-    assert os.path.isabs(dir) and not dir.endswith("/")
-    dir = dir + "/"
-
-    tlist = []
-    for p in psutil.disk_partitions():
-        if dir.startswith(p.mountpoint):
-            tlist.append(p)
-    tlist.sort(key=lambda x: len(x.mountpoint))
-    ret = tlist[-1]
-
-    out = subprocess.check_output(["blkid", tlist.device])
-    m = re.search(r'\bUUID="(\S*)"\B', out, re.M)
-    if m is not None:
-        fsUuid = m.group(1)
-    else:
-        fsUuid = None
-
-    class Mnt:
-        def __init__(self, dev, mnt_pt, fs_name, fs_uuid, mnt_opts):
-            self.dev = dev
-            self.mnt_pt = mnt_pt
-            self.fs_name = fs_name
-            self.fs_uuid = fs_uuid
-            self.mnt_opts = mnt_opts
-
-    return Mnt(ret.device, ret.mountpoint, ret.fstype, fsUuid, ret.opts)
-
-
 def compare_files(filepath1, filepath2):
     # don't use filecmp.cmp() directly
     # filecmp.dircmp is too complex, we created function compare_files() and compare_directories()

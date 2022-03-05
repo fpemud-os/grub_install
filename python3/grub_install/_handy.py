@@ -22,8 +22,10 @@
 
 
 import os
+import re
 import shutil
 import struct
+import psutil
 import subprocess
 from ._util import force_mkdir
 from ._const import PlatformType
@@ -285,3 +287,50 @@ class Grub:
     @staticmethod
     def hostToTargetBytes(platform_type, num, len):
         bol = Handy.isPlatformBigEndianOrLittleEndian(platform_type)
+
+    @staticmethod
+    def probeMnt(dir):
+        assert os.path.isabs(dir) and not dir.endswith("/")
+        dir = dir + "/"
+
+        tlist = []
+        for p in psutil.disk_partitions():
+            if dir.startswith(p.mountpoint):
+                tlist.append(p)
+        tlist.sort(key=lambda x: len(x.mountpoint))
+        ret = tlist[-1]
+
+        try:
+            fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", ret.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            fs = None
+
+        try:
+            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs", "-d", ret.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            fs_uuid = None
+
+        try:
+            bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", ret.device], universal_newlines=True).rstrip("\n")
+            if bios_hints == "":
+                bios_hints = None
+        except subprocess.CalledProcessError:
+            bios_hints = ""
+
+        try:
+            efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", ret.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            efi_hints = ""
+
+        class Mnt:
+            def __init__(self, dev, fs, fs_uuid, mnt_pt, mnt_opts, bios_hints, efi_hints):
+                self.dev = dev
+                self.fs = fs
+                self.fs_uuid = fs_uuid
+                self.mnt_pt = mnt_pt
+                self.mnt_opts = mnt_opts
+                self.bios_hints = bios_hints
+                self.efi_hints = efi_hints
+
+        return Mnt(ret.device, fs, fs_uuid, ret.mountpoint, ret.opts, bios_hints, efi_hints)
+

@@ -27,7 +27,7 @@ import abc
 import shutil
 import parted
 import pathlib
-from ._util import force_rm, force_mkdir, rmdir_if_empty, mnt_probe, compare_files
+from ._util import force_rm, force_mkdir, rmdir_if_empty, compare_files
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._handy import Handy, Grub
 from ._source import Source
@@ -258,7 +258,7 @@ class _Common:
 
     @staticmethod
     def install_platform(p, platform_type, source):
-        mnt = mnt_probe(p._bootDir)
+        mnt = Grub.probeMnt(p._bootDir)
         if mnt.fs_uuid is None:
             raise Exception("")     # FIXME
 
@@ -294,9 +294,9 @@ class _Common:
 
         # fs module
         if Handy.isPlatformEfi(platform_type):
-            if mnt.fs_name != "vfat":
+            if mnt.fs != "vfat":
                 raise Exception("%s doesn't look like an EFI partition" % (p._bootDir))
-        moduleList.append(Grub.getGrubFsName(mnt.fs_name))
+        moduleList.append(Grub.getGrubFsName(mnt.fs))
 
         # install files
         Grub.copyPlatformFiles(platform_type, source, grubDir)

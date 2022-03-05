@@ -46,8 +46,8 @@ from ._target import Target
 
 from ._errors import CheckCode
 
-from ._errors import StorageLayoutError
-from ._errors import StorageLayoutCreateError
-from ._errors import StorageLayoutAddDiskError
-from ._errors import StorageLayoutRemoveDiskError
-from ._errors import StorageLayoutParseError
+from ._errors import SourceError
+from ._errors import CopySourceError
+from ._errors import TargetError
+from ._errors import InstallError
+from ._errors import CheckError

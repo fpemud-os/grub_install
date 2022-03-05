@@ -20,33 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from enum import Enum, auto
 
-
-class CheckCode(Enum):
-    TRIVIAL = auto()
-    ESP_SIZE_INVALID = auto()
-    SWAP_NOT_ENABLED = auto()
-    SWAP_SIZE_TOO_SMALL = auto()
-
-
-def checkErrorCallback(error_callback, check_code, *kargs):
-    if error_callback is None:
-        return
-
-    errDict = {
-        CheckCode.TRIVIAL: (1, "{0}"),
-        CheckCode.ESP_SIZE_INVALID: (1, "Invalid size for ESP partition \"{0}\"."),
-        CheckCode.SWAP_NOT_ENABLED: (0, "Swap is not enabled."),
-        CheckCode.SWAP_SIZE_TOO_SMALL: (1, "Swap {0} size is too small."),
-    }
-
-    argNum, fstr = errDict[check_code]
-    assert len(kargs) == argNum
-    error_callback(check_code, fstr % kargs)
-
-
-class ParseSourceError(Exception):
+class SourceError(Exception):
     pass
 
 
@@ -54,7 +29,7 @@ class CopySourceError(Exception):
     pass
 
 
-class ParseError(Exception):
+class TargetError(Exception):
     pass
 
 
