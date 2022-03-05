@@ -206,8 +206,8 @@ class Target(abc.ABC):
     def remove_all(self):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
 
-        # remove platforms, some platform has special work to do
-        for k in self._platforms:
+        # remove platforms, some platform needs special processing
+        for k in list(self._platforms.keys()):
             self.remove_platform(k)
 
         # remove remaining files
