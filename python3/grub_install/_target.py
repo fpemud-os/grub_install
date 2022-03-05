@@ -272,7 +272,7 @@ class _Common:
         # make core.img
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget()
         coreImgFile = os.path.join(grubDir, platform_type.value, coreName)
-        subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimageTarget, "-d", source.get_platform_dir(platform_type), "-o", coreImgFile])
+        subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimageTarget, "-d", source.get_platform_dir(platform_type), "-o", coreImgFile] + moduleList)
 
     def remove_platform(p, platform_type):
         platDir = os.path.join(p._bootDir, "grub", platform_type.value)
