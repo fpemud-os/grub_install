@@ -23,12 +23,40 @@
 
 import os
 import shutil
+import struct
 import subprocess
 from ._util import force_mkdir
 from ._const import PlatformType
 
 
 class Handy:
+
+    @staticmethod
+    def isPlatformBigEndianOrLittleEndian(platform_type):
+        if platform_type.value.startswith("i386-"):
+            return False
+        elif platform_type.value.startswith("x86_64-"):
+            return False
+        elif platform_type.value.startswith("arm-"):
+            return False
+        elif platform_type.value.startswith("arm64-"):
+            return False
+        elif platform_type.value.startswith("ia64-"):
+            return False
+        elif platform_type.value.startswith("sparc64-"):
+            return True
+        elif platform_type.value.startswith("powerpc-"):
+            return True
+        elif platform_type.value.startswith("mips-"):
+            return True
+        elif platform_type.value.startswith("mipsel-"):
+            return False
+        elif platform_type.value.startswith("riscv32-"):
+            return False
+        elif platform_type.value.startswith("riscv64-"):
+            return False
+        else:
+            assert False
 
     @staticmethod
     def isPlatformEfi(platform_type):
@@ -120,6 +148,9 @@ class Grub:
     BOOT_MACHINE_PART_END = 0x1fe
 
     KERNEL_I386_PC_LINK_ADDR = 0x9000
+
+    # Offset of field holding no reed solomon length.
+    KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH = 0x14
 
     @staticmethod
     def getGrubFsName(fs_name):
@@ -230,3 +261,27 @@ class Grub:
     @staticmethod
     def makeCoreImage(source, platform_type, load_cfg_file, mkimage_target, module_list, out_path):
         subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source.get_platform_dir(platform_type), "-o", out_path] + module_list)
+
+    @staticmethod
+    def targetBytesToHost(platform_type, buf, len):
+        assert len in [8, 16, 32, 64]
+
+        bol = Handy.isPlatformBigEndianOrLittleEndian(platform_type)
+        if len == 8:
+            assert len(buf) == 1
+            ret = struct.unpack("", buf)
+
+
+
+        elif len == 16:
+            assert len(buf) == 2
+        elif len == 32:
+            assert len(buf) == 4
+        elif len == 64:
+            assert len(buf) == 8
+        else:
+            assert False
+
+    @staticmethod
+    def hostToTargetBytes(platform_type, num, len):
+        bol = Handy.isPlatformBigEndianOrLittleEndian(platform_type)

@@ -22,8 +22,10 @@
 
 
 import os
+import re
 import abc
 import shutil
+import parted
 import pathlib
 from ._util import force_rm, force_mkdir, rmdir_if_empty, mnt_probe, compare_files
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
@@ -359,6 +361,7 @@ class _Bios:
 
     @staticmethod
     def install_platform(platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
+        assert _Bios._isValidDisk(dev)
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
@@ -407,6 +410,7 @@ class _Bios:
                     f.write(bootBuf)
                     f.write(coreBuf)
 
+        # fill custom attributes
         platform_install_info.mbr_installed = bInstallMbr
         platform_install_info.allow_floppy = bAllowFloppy
         platform_install_info.rs_codes = bAddRsCodes
@@ -416,51 +420,19 @@ class _Bios:
         pass
 
     @staticmethod
-    def install_platform_for_iso(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
-
-        if 
-
-
-
-        char *output = grub_util_path_concat (3, boot_grub, "i386-pc", "eltorito.img");
-      load_cfg = grub_util_make_temporary_file ();
-
-
-
-      grub_install_push_module ("biosdisk");
-      grub_install_push_module ("iso9660");
-      grub_install_make_image_wrap (source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
-				    "/boot/grub", output,
-				    0, load_cfg,
-				    "i386-pc-eltorito", 0);
-      xorriso_push ("-boot-load-size");
-      xorriso_push ("4");
-      xorriso_push ("-boot-info-table");
-
-	      char *boot_hybrid = grub_util_path_concat (2, source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
-							 "boot_hybrid.img");
-	      xorriso_push ("--grub2-boot-info");
-	      xorriso_push ("--grub2-mbr");
-	      xorriso_push (boot_hybrid);
-
-  /** build multiboot core.img */
-  grub_install_push_module ("pata");
-  grub_install_push_module ("ahci");
-  grub_install_push_module ("at_keyboard");
-  make_image (GRUB_INSTALL_PLATFORM_I386_MULTIBOOT, "i386-multiboot", "i386-multiboot/core.elf");
-  grub_install_pop_module ();
-  grub_install_pop_module ();
-  grub_install_pop_module ();
-  make_image_fwdisk (GRUB_INSTALL_PLATFORM_I386_IEEE1275, "i386-ieee1275", "ofwx86.elf");
-
-  grub_install_push_module ("part_apple");
-  make_image_fwdisk (GRUB_INSTALL_PLATFORM_POWERPC_IEEE1275, "powerpc-ieee1275", "powerpc-ieee1275/core.elf");
-  grub_install_pop_module ();
-
-  make_image_fwdisk (GRUB_INSTALL_PLATFORM_SPARC64_IEEE1275,
-		     "sparc64-ieee1275-cdcore", "sparc64-ieee1275/core.img");
-
-
+    def _isValidDisk(dev):
+        if not re.fullmatch(".*[0-9]+$", dev):
+            return False                            # dev should be a disk, not partition
+        pDev = parted.getDevice(dev)
+        pDisk = parted.newDisk(pDev)
+        if pDisk.type != "msdos":
+            return False                            # dev should have mbr partition table
+        pPartiList = pDisk.getPrimaryPartitions()
+        if len(pPartiList) > 0:
+            return False                            # dev should have partitions
+        if pPartiList[0].geometry.start * pDev.sectorSize < 1024 * 1024:
+            return False                            # dev should have mbr gap
+        return True
 
 
 class _Efi:
@@ -538,6 +510,53 @@ class _Efi:
 #         grub_set_install_backup_ponr()
 
 
+
+
+
+#     @staticmethod
+#     def install_platform_for_iso(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
+
+#         if 
+
+
+
+#         char *output = grub_util_path_concat (3, boot_grub, "i386-pc", "eltorito.img");
+#       load_cfg = grub_util_make_temporary_file ();
+
+
+
+#       grub_install_push_module ("biosdisk");
+#       grub_install_push_module ("iso9660");
+#       grub_install_make_image_wrap (source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
+# 				    "/boot/grub", output,
+# 				    0, load_cfg,
+# 				    "i386-pc-eltorito", 0);
+#       xorriso_push ("-boot-load-size");
+#       xorriso_push ("4");
+#       xorriso_push ("-boot-info-table");
+
+# 	      char *boot_hybrid = grub_util_path_concat (2, source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
+# 							 "boot_hybrid.img");
+# 	      xorriso_push ("--grub2-boot-info");
+# 	      xorriso_push ("--grub2-mbr");
+# 	      xorriso_push (boot_hybrid);
+
+#   /** build multiboot core.img */
+#   grub_install_push_module ("pata");
+#   grub_install_push_module ("ahci");
+#   grub_install_push_module ("at_keyboard");
+#   make_image (GRUB_INSTALL_PLATFORM_I386_MULTIBOOT, "i386-multiboot", "i386-multiboot/core.elf");
+#   grub_install_pop_module ();
+#   grub_install_pop_module ();
+#   grub_install_pop_module ();
+#   make_image_fwdisk (GRUB_INSTALL_PLATFORM_I386_IEEE1275, "i386-ieee1275", "ofwx86.elf");
+
+#   grub_install_push_module ("part_apple");
+#   make_image_fwdisk (GRUB_INSTALL_PLATFORM_POWERPC_IEEE1275, "powerpc-ieee1275", "powerpc-ieee1275/core.elf");
+#   grub_install_pop_module ();
+
+#   make_image_fwdisk (GRUB_INSTALL_PLATFORM_SPARC64_IEEE1275,
+# 		     "sparc64-ieee1275-cdcore", "sparc64-ieee1275/core.img");
 
 
 
