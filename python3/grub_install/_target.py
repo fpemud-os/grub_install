@@ -93,7 +93,7 @@ class Target(abc.ABC):
             ret.status = PlatformInstallInfo.Status.NOT_EXIST
             return ret
 
-    def install_platform(self, platform_type, source):
+    def install_platform(self, platform_type, source, **kwargs):
         assert self.get_platform_install_info(platform_type).status != PlatformInstallInfo.Status.BOOTABLE
         assert isinstance(source, Source)
 
