@@ -46,41 +46,13 @@ def checkErrorCallback(error_callback, check_code, *kargs):
     error_callback(check_code, fstr % kargs)
 
 
-class StorageLayoutError(Exception):
+class ParseError(Exception):
     pass
 
 
-class StorageLayoutCreateError(StorageLayoutError):
+class InstallError(Exception):
     pass
 
 
-class StorageLayoutMountError(StorageLayoutError):
+class CheckError(Exception):
     pass
-
-
-class StorageLayoutAddDiskError(StorageLayoutError):
-
-    def __init__(self, disk_devpath, message):
-        self.disk_devpath = disk_devpath
-        self.message = message
-
-
-class StorageLayoutReleaseDiskError(StorageLayoutError):
-
-    def __init__(self, disk_devpath, message):
-        self.disk_devpath = disk_devpath
-        self.message = message
-
-
-class StorageLayoutRemoveDiskError(StorageLayoutError):
-
-    def __init__(self, disk_devpath, message):
-        self.disk_devpath = disk_devpath
-        self.message = message
-
-
-class StorageLayoutParseError(StorageLayoutError):
-
-    def __init__(self, layout_name, message):
-        self.layout_name = layout_name
-        self.message = message
