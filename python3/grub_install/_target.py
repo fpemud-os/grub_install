@@ -121,6 +121,7 @@ class Target(abc.ABC):
 
     def install_platform(self, platform_type, source, **kwargs):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+        assert isinstance(platform_type, PlatformType)
         assert isinstance(source, Source)
 
         ret = PlatformInstallInfo()
@@ -132,12 +133,12 @@ class Target(abc.ABC):
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
                                        False,                                               # bFloppyOrHdd
                                        kwargs.get("bootsector", True),                      # bInstallMbr
-                                       kwargs.get("allow_floppy", False),
-                                       kwargs.get("rs_codes", True))
+                                       kwargs.get("allow_floppy", False),                   # bAllowFloppy
+                                       kwargs.get("rs_codes", True))                        # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, ret, source, self._bootDir,
-                                      kwargs.get("removable", True),
-                                      kwargs.get("update_nvram", False))
+                                      kwargs.get("removable", False),                       # bRemovable
+                                      kwargs.get("update_nvram", False))                    # bUpdateNvram
             else:
                 assert False
         elif self._targetType == TargetType.PYCDLIB_OBJ:
@@ -149,12 +150,12 @@ class Target(abc.ABC):
                 _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
                                        False,                                               # bFloppyOrHdd
                                        False,                                               # bInstallMbr
-                                       False,
-                                       False)
+                                       False,                                               # bAllowFloppy
+                                       False)                                               # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, ret, source, self._bootDir,
-                                      kwargs.get("removable", True),
-                                      False)
+                                      kwargs.get("removable", False),                       # bRemovable
+                                      False)                                                # bUpdateNvram
             else:
                 assert False
         else:
@@ -168,7 +169,7 @@ class Target(abc.ABC):
         
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_platform(platform_type, self._dev)
+                _Bios.remove_platform(platform_type, self._bootDir, self._dev)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.remove_platform(platform_type, self._bootDir)
             else:
@@ -467,7 +468,7 @@ class _Bios:
         platform_install_info.rs_codes = bAddRsCodes
 
     @staticmethod
-    def remove_platform(platform_type, bootDir):
+    def remove_platform(platform_type, bootDir, dev):
         pass
 
     @staticmethod
