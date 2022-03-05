@@ -41,8 +41,12 @@ class PlatformType(enum.Enum):
     RISCV64_EFI = enum.auto()                               # FIXME
 
 
-class PlatformInstallStatus(enum.Enum):
-    BOOTABLE = enum.auto()
-    EXIST = enum.auto()
-    NOT_EXIST = enum.auto()
+class PlatformInstallInfo:
 
+    class Status(enum.Enum):
+        BOOTABLE = enum.auto()
+        EXIST = enum.auto()
+        NOT_EXIST = enum.auto()
+
+    def __init__(self):
+        self.status = None

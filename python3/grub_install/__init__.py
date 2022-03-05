@@ -38,7 +38,7 @@ __version__ = "0.0.1"
 from ._const import TargetType
 from ._const import TargetAccessMode
 from ._const import PlatformType
-from ._const import PlatformInstallStatus
+from ._const import PlatformInstallInfo
 
 from ._source import Source
 

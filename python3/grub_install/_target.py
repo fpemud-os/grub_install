@@ -26,7 +26,7 @@ import abc
 import shutil
 import pathlib
 from ._util import force_rm, force_mkdir
-from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallStatus
+from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._handy import Handy, Grub
 from ._source import Source
 
@@ -84,12 +84,17 @@ class Target(abc.ABC):
     def platforms(self):
         return self._platforms.keys()
 
-    def get_platform_install_status(self, platform_type):
+    def get_platform_install_info(self, platform_type):
         assert isinstance(platform_type, PlatformType)
-        return self._platforms.get(platform_type, PlatformInstallStatus.NOT_EXIST)
+        if platform_type in self._platforms:
+            return self._platforms[platform_type]
+        else:
+            ret = PlatformInstallInfo()
+            ret.status = PlatformInstallInfo.Status.NOT_EXIST
+            return ret
 
     def install_platform(self, platform_type, source):
-        assert self.get_platform_install_status(platform_type) != PlatformInstallStatus.BOOTABLE
+        assert self.get_platform_install_info(platform_type).status != PlatformInstallInfo.Status.BOOTABLE
         assert isinstance(source, Source)
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -114,7 +119,7 @@ class Target(abc.ABC):
         else:
             assert False
 
-        self._platforms[platform_type] = PlatformInstallStatus.BOOTABLE
+        self._platforms[platform_type] = PlatformInstallInfo.Status.BOOTABLE
 
     def remove_platform(self, platform_type):
         assert isinstance(platform_type, PlatformType)
@@ -187,7 +192,8 @@ class _Common:
             for fn in os.listdir(grubDir):
                 for pt in PlatformType:
                     if fn == pt.value:
-                        p._platforms[pt] = PlatformInstallStatus.BOOTABLE
+                        p._platforms[pt] = PlatformInstallInfo()
+                        p._platforms[pt].status = PlatformInstallInfo.Status.BOOTABLE
 
     def install_platform(p, platform_type, source):
         disk_module = None
