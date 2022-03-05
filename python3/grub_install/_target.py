@@ -187,6 +187,15 @@ class Target(abc.ABC):
         grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
         force_rm(grubEnvFile)
 
+    def remove_all(self):
+        for k in self._platforms:
+            self.remove_platform(k)
+        self.remove_data()
+
+        # remove cruft files
+        _Efi.remove_crufts(self._bootDir)
+        _Common.remove_crufts(self)
+
     def check(self, auto_fix=False):
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.check(self, auto_fix)
@@ -214,6 +223,7 @@ class Target(abc.ABC):
 
 class _Common:
 
+    @staticmethod
     def init_platforms(p):
         grubDir = os.path.join(p._bootDir, "grub")
         if os.path.isdir(grubDir):
@@ -223,6 +233,7 @@ class _Common:
                         p._platforms[pt] = PlatformInstallInfo()
                         p._platforms[pt].status = PlatformInstallInfo.Status.BOOTABLE
 
+    @staticmethod
     def install_platform(p, platform_type, source):
         mnt = mnt_probe(p._bootDir)
         if mnt.fs_uuid is None:
@@ -279,10 +290,16 @@ class _Common:
         coreImgFile = os.path.join(grubDir, platform_type.value, coreName)
         Grub.makeCoreImage(source, platform_type, loadCfgFile, mkimageTarget, moduleList, coreImgFile)
 
+    @staticmethod
     def remove_platform(p, platform_type):
         platDir = os.path.join(p._bootDir, "grub", platform_type.value)
         force_rm(platDir)
 
+    @staticmethod
+    def remove_crufts(p):
+        force_rm(os.path.join(p._bootDir, "grub"))
+
+    @staticmethod
     def check(p, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
         if os.path.isdir(grubDir):
@@ -294,6 +311,7 @@ class _Common:
             if len(p._platforms) > 0:
                 raise Exception("")     # FIXME
 
+    @staticmethod
     def check_with_source(p, source, auto_fix):
         # FIXME
         pass
@@ -531,6 +549,9 @@ class _Efi:
         # remove empty efi dir
         rmdir_if_empty(efiDir)
 
+    @staticmethod
+    def remove_crufts(bootDir):
+        force_rm(os.path.join(bootDir, "EFI"))
 
 
 # class _Sparc:
