@@ -228,5 +228,5 @@ class Grub:
                 shutil.copytree(source.get_theme_directory(x), dstDir)
 
     @staticmethod
-    def make_image(source_dir, load_cfg_file, mkimage_target, out_path):
-        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source_dir, "-o", out_path])
+    def makeCoreImage(source, platform_type, load_cfg_file, mkimage_target, module_list, out_path):
+        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source.get_platform_dir(platform_type), "-o", out_path] + module_list)
