@@ -41,9 +41,7 @@ class Target(abc.ABC):
         self._mode = target_access_mode
 
         # target specific variables
-        if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            assert False
-        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
             self._rootfsDir = kwargs.get("rootfs_dir", None)
             self._bootDir = kwargs.get("boot_dir", os.path.join(self._rootfsDir, "boot"))
             self._dev = kwargs["dev"]
@@ -59,9 +57,7 @@ class Target(abc.ABC):
         # self._platforms
         self._platforms = dict()
         if self._mode in [TargetAccessMode.R, TargetAccessMode.RW]:
-            if self._targetType == TargetType.MOUNTED_FDD_DEV:
-                assert False
-            elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+            if self._targetType == TargetType.MOUNTED_HDD_DEV:
                 _Common.init_platforms(self)
                 for pt in self._platforms:
                     # FIXME: detect unbootable item
@@ -96,13 +92,7 @@ class Target(abc.ABC):
         assert self.get_platform_install_status(platform_type) != PlatformInstallStatus.BOOTABLE
         assert isinstance(source, Source)
 
-        if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            _Common.install_platform(self, platform_type, source)
-            if platform_type == PlatformType.I386_PC:
-                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, False, True)
-            else:
-                assert False
-        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, True)
@@ -129,13 +119,7 @@ class Target(abc.ABC):
     def remove_platform(self, platform_type):
         assert isinstance(platform_type, PlatformType)
         
-        if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            if platform_type == PlatformType.I386_PC:
-                _Bios.remove_platform(platform_type, self._dev)
-            else:
-                assert False
-            _Common.remove_platform(self, platform_type)
-        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
                 _Bios.remove_platform(platform_type, self._dev)
             elif Handy.isPlatformEfi(platform_type):
@@ -171,9 +155,7 @@ class Target(abc.ABC):
         force_rm(os.path.join(grubDir, "themes"))
 
     def check(self, auto_fix=False):
-        if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            assert False
-        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.check(self, auto_fix)
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             # FIXME
@@ -186,9 +168,7 @@ class Target(abc.ABC):
     def check_with_source(self, source, auto_fix=False):
         assert isinstance(source, Source)
 
-        if self._targetType == TargetType.MOUNTED_FDD_DEV:
-            assert False
-        elif self._targetType == TargetType.MOUNTED_HDD_DEV:
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.check_with_source(self, source, auto_fix)
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             # FIXME
