@@ -209,7 +209,21 @@ class _Common:
                         p._platforms[pt].status = PlatformInstallInfo.Status.BOOTABLE
 
     def install_platform(p, platform_type, source):
-        disk_module = None
+        # step 1
+        if platform_type == PlatformType.I386_PC:
+            disk_module = "biosdisk"
+        elif platform_type == PlatformType.I386_MULTIBOOT:
+            disk_module = "native"
+        elif Handy.isPlatformCoreboot(platform_type):
+            disk_module = "native"
+        elif Handy.isPlatformQemu(platform_type):
+            disk_module = "native"
+        elif platform_type == PlatformType.MIPSEL_LOONGSON:
+            disk_module = "native"
+        else:
+            disk_module = None
+
+
 
 
         grub_install_copy_files(source)

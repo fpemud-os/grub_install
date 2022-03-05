@@ -22,6 +22,7 @@
 
 
 import os
+from platform import platform
 import shutil
 from ._util import force_mkdir
 from ._const import PlatformType
@@ -54,6 +55,14 @@ class Handy:
             PlatformType.I386_XEN,
             PlatformType.I386_XEN_PVH,
             PlatformType.X86_64_XEN,
+        ]
+
+    @staticmethod
+    def isPlatformQemu(platform_type):
+        return platform_type in [
+            PlatformType.I386_QEMU,
+            PlatformType.MIPS_QEMU_MIPS,
+            PlatformType.MIPSEL_QEMU_MIPS,
         ]
 
     @staticmethod

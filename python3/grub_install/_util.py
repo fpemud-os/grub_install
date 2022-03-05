@@ -53,3 +53,7 @@ def force_mkdir(path, clear=False):
         os.mkdir(path)
     else:
         os.mkdir(path)              # path does not exist
+
+
+def fs_probe(dir):
+    pass
