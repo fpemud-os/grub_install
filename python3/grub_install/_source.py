@@ -24,6 +24,7 @@
 import os
 import glob
 from ._const import PlatformType
+from ._errors import SourceError
 
 
 class Source:
@@ -37,10 +38,12 @@ class Source:
             base_dir = "/"
 
         self._libDir = os.path.join(base_dir, "usr", "lib", "grub")
-        assert os.path.isdir(self._libDir)
+        if not os.path.isdir(self._libDir):
+            raise SourceError("directory %s does not exist" % (self._libDir))
 
         self._shareDir = os.path.join(base_dir, "usr", "share", "grub")
-        assert os.path.isdir(self._shareDir)
+        if not os.path.isdir(self._shareDir):
+            raise SourceError("directory %s does not exist" % (self._shareDir))
 
         self._localeDir = os.path.join(base_dir, "usr", "share", "locale")
 
@@ -88,7 +91,12 @@ class Source:
 
     def get_all_font_files(self):
         assert self.supports(self.CAP_FONTS)
-        return glob.glob(os.path.join(self._shareDir, "*.pf2"))
+        ret = dict()
+        for fullfn in glob.glob(os.path.join(self._shareDir, "*.pf2")):
+            n = os.path.basename(fullfn)
+            n = n.replace(".pf2", "")
+            ret[n] = fullfn
+        return ret
 
     def get_font_file(self, font_name):
         assert self.supports(self.CAP_FONTS)
@@ -98,13 +106,15 @@ class Source:
 
     def get_default_font(self):
         assert self.supports(self.CAP_FONTS)
-        ret = "unicode"
-        assert os.path.exists(os.path.join(self._shareDir, ret + ".pf2"))
-        return ret
+        return "unicode"
 
     def get_all_theme_directories(self):
         assert self.supports(self.CAP_THEMES)
-        return glob.glob(os.path.join(self._themesDir, "*"))
+        ret = dict()
+        for fullfn in glob.glob(os.path.join(self._themesDir, "*")):
+            n = os.path.basename(fullfn)
+            ret[n] = fullfn
+        return ret
 
     def get_theme_directory(self, theme_name):
         assert self.supports(self.CAP_THEMES)
@@ -114,9 +124,7 @@ class Source:
 
     def get_default_theme(self):
         assert self.supports(self.CAP_THEMES)
-        ret = "starfield"
-        assert os.path.exists(os.path.join(self._themesDir, ret))
-        return ret
+        return "starfield"
 
     def copy_to(self, platforms, dest_dir):
         # FIXME
