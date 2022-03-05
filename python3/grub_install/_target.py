@@ -105,7 +105,10 @@ class Target(abc.ABC):
             if platform_type == PlatformType.I386_PC:
                 ret.allow_floppy = kwargs.get("allow_floppy", False)
                 ret.rs_codes = kwargs.get("rs_codes", True)
-                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, True, True, ret.allow_floppy, ret.rs_codes)
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev,
+                                       True,                                                # bInstallMbr
+                                       False,                                               # bFloppyOrHdd
+                                       ret.allow_floppy, ret.rs_codes)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, source, self._bootDir)
             else:
@@ -118,7 +121,10 @@ class Target(abc.ABC):
             if platform_type == PlatformType.I386_PC:
                 ret.allow_floppy = kwargs.get("allow_floppy", False)
                 ret.rs_codes = kwargs.get("rs_codes", True)
-                _Bios.install_platform(platform_type, source, self._bootDir, self._dev, False, True, ret.allow_floppy, ret.rs_codes)
+                _Bios.install_platform(platform_type, source, self._bootDir, self._dev,
+                                       False,                                               # bInstallMbr
+                                       False,                                               # bFloppyOrHdd
+                                       ret.allow_floppy, ret.rs_codes)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_platform(platform_type, source, self._bootDir)
             else:
@@ -293,8 +299,8 @@ class _Common:
 class _Bios:
 
     @staticmethod
-    def install_platform(platform_type, source, bootDir, dev, bInstallMbr, bHddOrFloppy, bAllowFloppy, bAddRsCodes):
-        assert bHddOrFloppy
+    def install_platform(platform_type, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
+        assert bFloppyOrHdd
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
 
@@ -327,14 +333,15 @@ class _Bios:
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
                 # for buggy BIOSes which don't pass boot drive correctly. Instead,
                 # they pass 0x00 or 0x01 even when booted from 0x80.
-                if not bAllowFloppy:
+                if not bAllowFloppy and not bFloppyOrHdd:
                     # Replace the jmp (2 bytes) with double nop's.
                     bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK] = 0x90
                     bootBuf[Grub.BOOT_MACHINE_DRIVE_CHECK+1] = 0x90
 
                 # Copy the partition table.
-                s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
-                bootBuf[s:e] = tmpBuf[s:e]
+                if not bAllowFloppy and not bFloppyOrHdd:
+                    s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+                    bootBuf[s:e] = tmpBuf[s:e]
 
             # FIXME
             # grub_util_warn ("%s", _("Attempting to install GRUB to a disk with multiple partition labels or both partition label and filesystem.  This is not supported yet."));
