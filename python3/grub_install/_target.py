@@ -25,7 +25,7 @@ import os
 import abc
 import shutil
 import pathlib
-from ._util import force_rm, force_mkdir
+from ._util import force_rm, force_mkdir, rmdir_if_empty, fs_probe
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._handy import Handy, Grub
 from ._source import Source
@@ -223,6 +223,10 @@ class _Common:
         else:
             disk_module = None
 
+        fsName = fs_probe(p._bootDir)
+        if Handy.isPlatformEfi(platform_type):
+            if fsName != "vfat":
+                raise Exception("%s doesn't look like an EFI partition" % (p._bootDir))
 
 
 
@@ -470,25 +474,32 @@ class _Efi:
     @staticmethod
     def install_platform(platform_type, source, bootDir):
         efiDir = os.path.join(bootDir, "EFI")
+        efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFile(platform_type)
 
         # create efi dir
         force_mkdir(efiDir)
 
+        # create level 2 efi dir
+        force_mkdir(efiDirLv2)
+
         # copy efi file
-        shutil.copy(os.path.join(source.get_platform_dir(platform_type), efiFn), os.path.join(efiDir, efiFn))
+        shutil.copy(os.path.join(source.get_platform_dir(platform_type), efiFn), os.path.join(efiDirLv2, efiFn))
 
     @staticmethod
     def remove_platform(platform_type, bootDir):
         efiDir = os.path.join(bootDir, "EFI")
+        efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFile(platform_type)
 
         # remove efi file
-        force_rm(os.path.join(efiDir, efiFn))
+        force_rm(os.path.join(efiDirLv2, efiFn))
+
+        # remove empty level 2 efi dir
+        rmdir_if_empty(efiDirLv2)
 
         # remove empty efi dir
-        if len(os.listdir(efiDir)) == 0:
-            force_rm(efiDir)
+        rmdir_if_empty(efiDir)
 
 
 

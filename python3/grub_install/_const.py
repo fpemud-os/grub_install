@@ -25,7 +25,6 @@ import enum
 
 
 class TargetType(enum.Enum):
-    MOUNTED_FDD_DEV = enum.auto()            # floppy device
     MOUNTED_HDD_DEV = enum.auto()            # hard-disk device
     PYCDLIB_OBJ = enum.auto()                # pycdlib object
     ISO_DIR = enum.auto()                    # directory containing files for a ISO
@@ -73,3 +72,8 @@ class PlatformInstallInfo:
 
     def __init__(self):
         self.status = None
+
+
+#    MOUNTED_FDD_DEV = enum.auto()            # floppy device
+#    MOUNTED_HDD_DEV_APPLE = enum.auto()      # apple device
+#    APPLE_ISO_DIR = enum.auto()              # apple device

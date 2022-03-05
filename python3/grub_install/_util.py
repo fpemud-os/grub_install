@@ -23,6 +23,7 @@
 
 import os
 import shutil
+import psutil
 
 
 def force_rm(path):
@@ -55,5 +56,17 @@ def force_mkdir(path, clear=False):
         os.mkdir(path)              # path does not exist
 
 
+def rmdir_if_empty(path):
+    if len(os.listdir(path)) == 0:
+        os.rmdir(path)
+
+
 def fs_probe(dir):
-    pass
+    assert os.path.isabs(dir) and not dir.endswith("/")
+    dir = dir + "/"
+    ret = []
+    for p in psutil.disk_partitions():
+        if dir.startswith(p.mountpoint):
+            ret.append(p)
+    ret.sort(key=lambda x: len(x.mountpoint))
+    return ret[-1].fstype
