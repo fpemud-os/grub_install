@@ -344,7 +344,11 @@ class _Bios:
     def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
-        if True:
+        bOk = True
+
+
+
+        if bOk:
             # check success
             platform_install_info.mbr_installed = True
             platform_install_info.allow_floppy = False
@@ -396,7 +400,7 @@ class _Bios:
                     s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                     bootBuf[s:e] = tmpBuf[s:e]
 
-            with open(dev, "w") as f:
+            with open(dev, "wb") as f:
                 if bAddRsCodes:
                     assert False
                 else:
