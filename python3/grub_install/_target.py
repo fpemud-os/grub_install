@@ -94,6 +94,7 @@ class Target(abc.ABC):
 
     def get_platform_install_info(self, platform_type):
         assert isinstance(platform_type, PlatformType)
+
         if platform_type in self._platforms:
             return self._platforms[platform_type]
         else:
