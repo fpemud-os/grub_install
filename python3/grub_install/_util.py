@@ -23,9 +23,9 @@
 
 import os
 import re
-import copy
 import shutil
 import psutil
+import pathlib
 import subprocess
 
 
@@ -91,3 +91,8 @@ def mnt_probe(dir):
             self.mnt_opts = mnt_opts
 
     return Mnt(ret.device, ret.mountpoint, ret.fstype, fsUuid, ret.opts)
+
+
+def compare_files(filename1, filename2):
+    # FIXME: should compare block by block
+    return pathlib.Path(filename1).read_bytes() == pathlib.Path(filename2).read_bytes()
