@@ -65,7 +65,8 @@ class Target(abc.ABC):
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, self._dev)
+                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir,
+                                                             self._dev)                             # dev
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
                         else:
@@ -91,7 +92,8 @@ class Target(abc.ABC):
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir, None)
+                            _Bios.fill_platform_install_info(k, v, self._targetType, self._bootDir,
+                                                             None)                                  # dev
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
                         else:
@@ -132,7 +134,8 @@ class Target(abc.ABC):
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
+                _Bios.install_platform(platform_type, ret, source, self._bootDir,
+                                       self._dev,                                           # dev
                                        False,                                               # bFloppyOrHdd
                                        kwargs.get("bootsector", True),                      # bInstallMbr
                                        kwargs.get("allow_floppy", False),                   # bAllowFloppy
@@ -149,7 +152,8 @@ class Target(abc.ABC):
         elif self._targetType == TargetType.ISO_DIR:
             _Common.install_platform(self, platform_type, source)
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_platform(platform_type, ret, source, self._bootDir, self._dev,
+                _Bios.install_platform(platform_type, ret, source, self._bootDir,
+                                       None,                                                # dev
                                        False,                                               # bFloppyOrHdd
                                        False,                                               # bInstallMbr
                                        False,                                               # bAllowFloppy
@@ -368,14 +372,14 @@ class _Bios:
 
         if not os.path.exists(bootImgFile):
             raise TargetError("'%s' does not exist" % (bootImgFile))
-        bootBuf = pathlib.Path(bootImgFile).read_bytes()
+        bootBuf = bytearray(pathlib.Path(bootImgFile).read_bytes())         # bootBuf needs to be writable
         if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
             raise TargetError("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
 
         if not os.path.exists(coreImgFile):
             raise TargetError("'%s' does not exist" % (coreImgFile))
         coreBuf = pathlib.Path(coreImgFile).read_bytes()
-        if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getMbrGapSizeThreshold()):
+        if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getCoreImgMaxSize()):
             raise TargetError("the size of '%s' is invalid" % (coreImgFile))
 
         if dev is not None:
@@ -385,28 +389,24 @@ class _Bios:
                 tmpBootBuf = f.read(Grub.DISK_SECTOR_SIZE)
                 tmpCoreBuf = f.read(len(coreBuf))
 
-            s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
-            if tmpBootBuf[:s1] != bootBuf[:s1]:
-                raise TargetError("invalid MBR record content")
+            # see comment in cls.install_platform()
+            s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+            bootBuf[s:e] = tmpBootBuf[s:e]
 
-            s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
-            if tmpBootBuf[e1:s2] != bootBuf[e1:s2]:
-                raise TargetError("invalid MBR record content")
-
-            if tmpBootBuf[s2:e2] == b'\x90\x90':
+            # see comment in cls.install_platform()
+            s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+2
+            if tmpBootBuf[s:e] == b'\x90\x90':
+                bootBuf[s:e] = tmpBootBuf[s:e]
                 bAllowFloppy = False
-            elif tmpBootBuf[s2:e2] == bootBuf[s2:e2]:
-                bAllowFloppy = True
             else:
-                raise TargetError("invalid MBR record content")
+                bAllowFloppy = True
 
-            s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
-            if tmpBootBuf[e2:s3] != bootBuf[e2:s3]:
-                raise TargetError("invalid MBR record content")
+            # see comment in cls.install_platform()
+            s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+            bootBuf[s:e] = tmpBootBuf[s:e]
 
-            if tmpBootBuf[e3:] != bootBuf[e3:]:
+            if tmpBootBuf != bootBuf:
                 raise TargetError("invalid MBR record content")
-
             if tmpCoreBuf != coreBuf:
                 raise TargetError("invalid on-disk core.img content")
 
@@ -416,7 +416,6 @@ class _Bios:
 
     @classmethod
     def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bFloppyOrHdd, bInstallMbr, bAllowFloppy, bAddRsCodes):
-        assert _Bios._isValidDisk(dev)
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
@@ -427,17 +426,18 @@ class _Bios:
 
         # install into device bios mbr
         if bInstallMbr:
-            bootBuf = pathlib.Path(bootImgFile).read_bytes()
+            assert _Bios._isValidDisk(dev)
+
+            bootBuf = bytearray(pathlib.Path(bootImgFile).read_bytes())     # bootBuf needs to be writable
             if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
 
             coreBuf = pathlib.Path(coreImgFile).read_bytes()
             if len(coreBuf) < Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is too small" % (coreImgFile))
-            if len(coreBuf) > cls._getMbrGapSizeThreshold():
+            if len(coreBuf) > cls._getCoreImgMaxSize():
                 raise Exception("the size of '%s' is too large" % (coreImgFile))
 
-            bootBuf = bytearray(bootBuf)
             with open(dev, "rb") as f:
                 tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
 
@@ -450,7 +450,7 @@ class _Bios:
                 # they pass 0x00 or 0x01 even when booted from 0x80.
                 if not bAllowFloppy and not bFloppyOrHdd:
                     # Replace the jmp (2 bytes) with double nop's.
-                    s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+1
+                    s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+2
                     bootBuf[s:e] == b'\x90\x90'
 
                 # Copy the partition table.
@@ -475,7 +475,7 @@ class _Bios:
         pass
 
     @staticmethod
-    def _getMbrGapSizeThreshold():
+    def _getCoreImgMaxSize():
         return 512 * 1024
 
     @classmethod
@@ -489,7 +489,7 @@ class _Bios:
         pPartiList = pDisk.getPrimaryPartitions()
         if len(pPartiList) > 0:
             return False                            # dev should have partitions
-        if pPartiList[0].geometry.start * pDev.sectorSize < cls._getMbrGapSizeThreshold():
+        if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreImgMaxSize():
             return False                            # dev should have mbr gap
         return True
 
