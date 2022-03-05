@@ -342,12 +342,13 @@ class _Common:
 
 class _Bios:
 
-    @staticmethod
-    def check_and_fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir, dev):
+    @classmethod
+    def check_and_fill_platform_install_info(cls, platform_type, platform_install_info, target_type, bootDir, dev):
         assert platform_install_info.status == platform_install_info.Status.BOOTABLE
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
+        bAllowFloppy = None
 
         bOk = False
         while True:
@@ -360,22 +361,49 @@ class _Bios:
             if not os.path.exists(coreImgFile):
                 break
             coreBuf = pathlib.Path(coreImgFile).read_bytes()
-            if not (Grub.DISK_SECTOR_SIZE < len(coreBuf) < 0xFFFF * Grub.DISK_SECTOR_SIZE):
+            if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getMbrGapSizeThreshold()):
                 break
 
+            with open(dev, "rb") as f:
+                tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
 
+                s1, e1 = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+                if tmpBuf[:s1] != bootBuf[:s1]:
+                    break
+
+                s2, e2 = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
+                if tmpBuf[e1:s2] != bootBuf[e1:s2]:
+                    break
+                if tmpBuf[s2:e2] == b'\x90\x90':
+                    bAllowFloppy = False
+                else:
+                    if tmpBuf[s2:e2] != bootBuf[s2:e2]:
+                        break
+                    bAllowFloppy = True
+
+                s3, e3 = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+                if tmpBuf[e2:s3] != bootBuf[e2:s3]:
+                    break
+
+                if tmpBuf[e3:] != bootBuf[e3:]:
+                    break
+
+                if coreBuf != f.read(len(coreBuf)):
+                    break
+
+            bOk = True
 
         if bOk:
             # check success
             platform_install_info.mbr_installed = True
-            platform_install_info.allow_floppy = False
+            platform_install_info.allow_floppy = bAllowFloppy
             platform_install_info.rs_codes = False
         else:
             # check failed
             platform_install_info.status = platform_install_info.Status.EXIST
 
-    @staticmethod
-    def install_platform(platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
+    @classmethod
+    def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bInstallMbr, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
         assert _Bios._isValidDisk(dev)
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes
 
@@ -394,7 +422,7 @@ class _Bios:
             coreBuf = pathlib.Path(coreImgFile).read_bytes()
             if len(coreBuf) < Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is too small" % (coreImgFile))
-            if len(coreBuf) > 0xFFFF * Grub.DISK_SECTOR_SIZE:
+            if len(coreBuf) > cls._getMbrGapSizeThreshold():
                 raise Exception("the size of '%s' is too large" % (coreImgFile))
 
             bootBuf = bytearray(bootBuf)
@@ -435,7 +463,11 @@ class _Bios:
         pass
 
     @staticmethod
-    def _isValidDisk(dev):
+    def _getMbrGapSizeThreshold():
+        return 512 * 1024
+
+    @classmethod
+    def _isValidDisk(cls, dev):
         if not re.fullmatch(".*[0-9]+$", dev):
             return False                            # dev should be a disk, not partition
         pDev = parted.getDevice(dev)
@@ -445,7 +477,7 @@ class _Bios:
         pPartiList = pDisk.getPrimaryPartitions()
         if len(pPartiList) > 0:
             return False                            # dev should have partitions
-        if pPartiList[0].geometry.start * pDev.sectorSize < 1024 * 1024:
+        if pPartiList[0].geometry.start * pDev.sectorSize < cls._getMbrGapSizeThreshold():
             return False                            # dev should have mbr gap
         return True
 
