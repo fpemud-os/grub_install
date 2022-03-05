@@ -26,6 +26,7 @@ import re
 import shutil
 import psutil
 import pathlib
+import filecmp
 import subprocess
 
 
@@ -98,6 +99,18 @@ def mnt_probe(dir):
     return Mnt(ret.device, ret.mountpoint, ret.fstype, fsUuid, ret.opts)
 
 
-def compare_files(filename1, filename2):
-    # FIXME: should compare block by block
-    return pathlib.Path(filename1).read_bytes() == pathlib.Path(filename2).read_bytes()
+def compare_files(filepath1, filepath2):
+    # don't use filecmp.cmp() directly
+    # filecmp.dircmp is too complex, we created function compare_files() and compare_directories()
+    return filecmp.cmp(filepath1, filepath2, shallow=False)
+
+
+def compare_directories(dirpath1, dirpath2):
+    ret1 = os.listdir(dirpath1)
+    ret2 = os.listdir(dirpath2)
+    if ret1 != ret2:
+        return False
+    for fn in ret1:
+        if not filecmp.cmp(os.path.join(dirpath1, fn), os.path.join(dirpath2, fn), shallow=False):
+            return False
+    return True

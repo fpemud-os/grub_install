@@ -24,9 +24,10 @@
 import os
 import glob
 import shutil
-from ._util import truncate_dir
+import pathlib
+from ._util import truncate_dir, compare_files, compare_directories
 from ._const import PlatformType
-from ._errors import SourceError
+from ._errors import ParseSourceError, CopySourceError
 
 
 class Source:
@@ -36,19 +37,20 @@ class Source:
     CAP_THEMES = 3
 
     def __init__(self, base_dir=None):
-        if base_dir is None:
-            base_dir = "/"
-
-        self._libDir = os.path.join(base_dir, "usr", "lib", "grub")
-        self._shareDir = os.path.join(base_dir, "usr", "share", "grub")
-        self._localeDir = os.path.join(base_dir, "usr", "share", "locale")
-        self._themesDir = os.path.join(base_dir, "usr", "share", "grub", "themes")
+        if base_dir is not None:
+            self._baseDir = base_dir
+        else:
+            self._baseDir = "/"
+        self._libDir = os.path.join(self._baseDir, "usr", "lib", "grub")
+        self._shareDir = os.path.join(self._baseDir, "usr", "share", "grub")
+        self._localeDir = os.path.join(self._baseDir, "usr", "share", "locale")
+        self._themesDir = os.path.join(self._baseDir, "usr", "share", "grub", "themes")
 
         # check
         if not os.path.isdir(self._libDir):
-            raise SourceError("directory %s does not exist" % (self._libDir))
+            raise ParseSourceError("directory %s does not exist" % (self._libDir))
         if not os.path.isdir(self._shareDir):
-            raise SourceError("directory %s does not exist" % (self._shareDir))
+            raise ParseSourceError("directory %s does not exist" % (self._shareDir))
         self.get_all_platform_directories()
 
     def supports(self, key):
@@ -68,7 +70,7 @@ class Source:
             try:
                 ret[PlatformType(n)] = fullfn
             except ValueError:
-                raise SourceError("invalid platform directory %s" % (fullfn))
+                raise ParseSourceError("invalid platform directory %s" % (fullfn))
         return ret
 
     def get_platform_directory(self, platform_type):
@@ -131,13 +133,56 @@ class Source:
     def copy_to(self, dest_dir):
         assert os.path.isdir(dest_dir)
 
-        os.makedirs(os.path.join(dest_dir, "usr", "lib", "grub"), exist_ok=True)
-            
+        # copy platform directories
+        tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._libDir))
+        os.makedirs(tdir, exist_ok=True)
+        for fullfn in self.get_all_platform_directories().values():
+            fullfn2 = os.path.join(tdir, _rel_path(self._libDir, fullfn))
+            if os.path.exists(fullfn2):
+                if not compare_directories(fullfn, fullfn2):
+                    raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
+            else:
+                shutil.copytree(fullfn, fullfn2)
+
+        # copy locale files
+        if self.supports(self.CAP_NLS):
+            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._localeDir))
+            os.makedirs(tdir, exist_ok=True)
+            for fullfn in self.get_all_locale_files().values():
+                fullfn2 = os.path.join(dest_dir, _rel_path(self._localeDir, fullfn))
+                if os.path.exists(fullfn2):
+                    if not compare_files(fullfn, fullfn2):
+                        raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
+                else:
+                    os.makedirs(os.path.dirname(fullfn2), exist_ok=True)
+                    shutil.copy(fullfn, fullfn2)
+
+        # copy font files
+        if self.supports(self.CAP_FONTS):
+            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._libDir))
+            os.makedirs(tdir, exist_ok=True)
+            for fullfn in self.get_all_font_files().values():
+                fullfn2 = os.path.join(dest_dir, _rel_path(self._libDir, fullfn))
+                if os.path.exists(fullfn2):
+                    if not compare_files(fullfn, fullfn2):
+                        raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
+                else:
+                    shutil.copy(fullfn, fullfn2)
+
+        # copy theme directories
+        if self.supports(self.CAP_THEMES):
+            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._themesDir))
+            os.makedirs(tdir, exist_ok=True)
+            for fullfn in self.get_all_theme_directories().values():
+                fullfn2 = os.path.join(dest_dir, _rel_path(self._themesDir, fullfn))
+                if os.path.exists(fullfn2):
+                    if not compare_directories(fullfn, fullfn2):
+                        raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
+                else:
+                    shutil.copytree(fullfn, fullfn2)
 
 
-
-        shutil.copytree()
-
-
-
-
+def _rel_path(baseDir, path):
+    if not baseDir.endswith("/"):
+        baseDir += "/"
+    return path.replace(baseDir, "")

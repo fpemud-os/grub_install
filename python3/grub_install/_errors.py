@@ -46,7 +46,11 @@ def checkErrorCallback(error_callback, check_code, *kargs):
     error_callback(check_code, fstr % kargs)
 
 
-class SourceError(Exception):
+class ParseSourceError(Exception):
+    pass
+
+
+class CopySourceError(Exception):
     pass
 
 
