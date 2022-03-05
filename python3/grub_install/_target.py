@@ -60,14 +60,14 @@ class Target(abc.ABC):
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
                 _Common.init_platforms(self)
                 for pt in self._platforms:
-                    # FIXME: detect unbootable item
+                    # FIXME: detect unbootable item, add extra attributes
                     pass
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 assert False                                                    # FIXME
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
                 for pt in self._platforms:
-                    # FIXME: detect unbootable item
+                    # FIXME: detect unbootable item, add extra attributes
                     pass
             else:
                 assert False
