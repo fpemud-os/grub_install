@@ -206,9 +206,9 @@ class Target(abc.ABC):
     def remove_all(self):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
 
+        # remove platforms, some platform has special work to do
         for k in self._platforms:
             self.remove_platform(k)
-        self.remove_data()
 
         # remove remaining cruft files
         _Efi.remove_remaining_crufts(self._bootDir)
