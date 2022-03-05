@@ -310,7 +310,7 @@ class _Bios:
         shutil.copy(bootImgFileSrc, bootImgFile)
 
         # install into device bios mbr
-        if True:
+        if bInstallMbr:
             bootBuf = pathlib.Path(bootImgFile).read_bytes()
             if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
                 raise Exception("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
