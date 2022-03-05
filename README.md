@@ -4,4 +4,5 @@
 advantage:
 1. use grub-mkrescue with pycdlib
 2. cross-arch install
-3. don't use extra process
+3. support remove
+4. support check
