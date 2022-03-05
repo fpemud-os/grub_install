@@ -162,7 +162,8 @@ class Target(abc.ABC):
         else:
             assert False
 
-        del self._platforms[platform_type]
+        if platform_type in self._platforms:
+            del self._platforms[platform_type]
 
     def install_data(self, source, locales=None, fonts=None, themes=None):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
