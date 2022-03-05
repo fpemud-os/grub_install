@@ -303,11 +303,10 @@ class _Bios:
         assert bFloppyOrHdd and not bAllowFloppy and bAddRsCodes
 
         coreImgFile = os.path.join(bootDir, "grub", "core.img")
+        bootImgFile = os.path.join(bootDir, "grub", "boot.img")
 
         # copy boot.img file
-        bootImgFileSrc = os.path.join(source.get_platform_dir(platform_type), "boot.img")
-        bootImgFile = os.path.join(bootDir, "grub", "boot.img")
-        shutil.copy(bootImgFileSrc, bootImgFile)
+        shutil.copy(os.path.join(source.get_platform_dir(platform_type), "boot.img"), bootImgFile)
 
         # install into device bios mbr
         if bInstallMbr:
