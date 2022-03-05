@@ -102,6 +102,7 @@ class Target(abc.ABC):
             return ret
 
     def install_platform(self, platform_type, source, **kwargs):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
         assert self.get_platform_install_info(platform_type).status != PlatformInstallInfo.Status.BOOTABLE
         assert isinstance(source, Source)
 
@@ -141,6 +142,7 @@ class Target(abc.ABC):
         self._platforms[platform_type] = ret
 
     def remove_platform(self, platform_type):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
         assert isinstance(platform_type, PlatformType)
         
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -162,6 +164,8 @@ class Target(abc.ABC):
         del self._platforms[platform_type]
 
     def install_data(self, source, locales=None, fonts=None, themes=None):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+
         grubDir = os.path.join(self._bootDir, "grub")
         force_mkdir(grubDir)
 
@@ -173,21 +177,29 @@ class Target(abc.ABC):
             Grub.copyThemeFiles(source, grubDir, themes)
 
     def remove_data(self):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+
         grubDir = os.path.join(self._bootDir, "grub")
         force_rm(os.path.join(grubDir, "locale"))
         force_rm(os.path.join(grubDir, "fonts"))
         force_rm(os.path.join(grubDir, "themes"))
 
     def touch_env_file(self):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+
         grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
         if not os.path.exists(grubEnvFile):
             Grub.createEnvBlkFile(grubEnvFile)
 
     def remove_env_file(self):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+
         grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
         force_rm(grubEnvFile)
 
     def remove_all(self):
+        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+
         for k in self._platforms:
             self.remove_platform(k)
         self.remove_data()
@@ -197,6 +209,8 @@ class Target(abc.ABC):
         _Common.remove_crufts(self)
 
     def check(self, auto_fix=False):
+        assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
+
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.check(self, auto_fix)
         elif self._targetType == TargetType.PYCDLIB_OBJ:
@@ -208,6 +222,7 @@ class Target(abc.ABC):
             assert False
 
     def check_with_source(self, source, auto_fix=False):
+        assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
