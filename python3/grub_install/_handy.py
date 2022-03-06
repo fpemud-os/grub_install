@@ -231,8 +231,10 @@ class Grub:
     @staticmethod
     def copyLocaleFiles(source, grub_dir, locales):
         assert source.supports(source.CAP_NLS)
+
         dstDir = os.path.join(grub_dir, "locales")
         force_mkdir(dstDir, clear=True)
+
         if locales == "*":
             for ln, fullfn in source.get_all_locale_files():
                 shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (ln)))
@@ -243,8 +245,10 @@ class Grub:
     @staticmethod
     def copyFontFiles(source, grub_dir, fonts):
         assert source.supports(source.CAP_FONTS)
+
         dstDir = os.path.join(grub_dir, "fonts")
         force_mkdir(dstDir, clear=True)
+
         if fonts == "*":
             for fn, fullfn in source.get_all_font_files():
                 shutil.copy(fullfn, dstDir)
@@ -255,8 +259,10 @@ class Grub:
     @staticmethod
     def copyThemeFiles(source, grub_dir, themes):
         assert source.supports(source.CAP_THEMES)
+
         dstDir = os.path.join(grub_dir, "themes")
         force_mkdir(dstDir, clear=True)
+
         if themes == "*":
             for tn, fullfn in source.get_all_theme_directories():
                 shutil.copytree(fullfn, dstDir)
