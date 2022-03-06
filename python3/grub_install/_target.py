@@ -332,7 +332,8 @@ class _Common:
         moduleList.append(mnt.fs)
         moduleList.append("search_fs_uuid")
 
-        # install files
+        # install module files
+        # FIXME: install only required modules
         Grub.copyPlatformFiles(platform_type, source, grubDir)
 
         # generate load.cfg for core.img
@@ -378,21 +379,23 @@ class _Bios:
 
     @classmethod
     def fill_platform_install_info(cls, platform_type, platform_install_info, target_type, bootDir, dev):
+        # read and check boot.img
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
-        coreImgFile = os.path.join(bootDir, "grub", Grub.getCoreImgNameAndTarget(platform_type)[0])
-
         if not os.path.exists(bootImgFile):
             raise TargetError("'%s' does not exist" % (bootImgFile))
         bootBuf = bytearray(pathlib.Path(bootImgFile).read_bytes())         # bootBuf needs to be writable
         if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
             raise TargetError("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
 
+        # read and check core.img
+        coreImgFile = os.path.join(bootDir, "grub", Grub.getCoreImgNameAndTarget(platform_type)[0])
         if not os.path.exists(coreImgFile):
             raise TargetError("'%s' does not exist" % (coreImgFile))
         coreBuf = pathlib.Path(coreImgFile).read_bytes()
         if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getCoreImgMaxSize()):
             raise TargetError("the size of '%s' is invalid" % (coreImgFile))
 
+        # read and check mbr
         if dev is not None:
             tmpBootBuf = None
             tmpCoreBuf = None
@@ -401,7 +404,7 @@ class _Bios:
                 tmpCoreBuf = f.read(len(coreBuf))
 
             # see comment in cls.install_platform()
-            s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END + 1
+            s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
             bootBuf[s:e] = tmpBootBuf[s:e]
 
             # see comment in cls.install_platform()
@@ -413,7 +416,7 @@ class _Bios:
                 bAllowFloppy = True
 
             # see comment in cls.install_platform()
-            s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END + 1
+            s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
             bootBuf[s:e] = tmpBootBuf[s:e]
 
             if tmpBootBuf != bootBuf:
@@ -421,6 +424,7 @@ class _Bios:
             if tmpCoreBuf != coreBuf:
                 raise TargetError("invalid on-disk core.img content")
 
+        # fill custom attributes
         platform_install_info.mbr_installed = (dev is not None)
         platform_install_info.allow_floppy = True if dev is None else bAllowFloppy
         platform_install_info.rs_codes = False
@@ -429,31 +433,45 @@ class _Bios:
     def install_platform(cls, platform_type, platform_install_info, source, bootDir, dev, bFloppyOrHdd, bInstallMbr, bAllowFloppy, bAddRsCodes):
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
 
-        coreImgFile = os.path.join(bootDir, "grub", "core.img")
+        # check
+        if bInstallMbr:
+            assert dev is not None
+            if not re.fullmatch(".*[0-9]+$", dev):
+                raise InstallError("'%s' must be a disk" % (dev))
+            pDev = parted.getDevice(dev)
+            pDisk = parted.newDisk(pDev)
+            if pDisk.type != "msdos":
+                raise InstallError("'%s' must have a MBR partition table" % (dev))
+            pPartiList = pDisk.getPrimaryPartitions()
+            if len(pPartiList) > 0:
+                raise InstallError("'%s' must have no partition" % (dev))
+            if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreImgMaxSize():
+                raise InstallError("'%s' has no MBR gap or its MBR gap is too small" % (dev)))
+
+        # read boot.img and check
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
+        bootBuf = bytearray(pathlib.Path(bootImgFile).read_bytes())     # bootBuf needs to be writable
+        if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
+            raise InstallError("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
+
+        # read core.img and check
+        coreImgFile = os.path.join(bootDir, "grub", "core.img")
+        coreBuf = pathlib.Path(coreImgFile).read_bytes()
+        if len(coreBuf) < Grub.DISK_SECTOR_SIZE:
+            raise InstallError("the size of '%s' is too small" % (coreImgFile))
+        if len(coreBuf) > cls._getCoreImgMaxSize():
+            raise InstallError("the size of '%s' is too large" % (coreImgFile))
 
         # copy boot.img file
         shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), bootImgFile)
 
-        # install into device bios mbr
+        # install into mbr
         if bInstallMbr:
-            assert _Bios._isValidDisk(dev)
-
-            bootBuf = bytearray(pathlib.Path(bootImgFile).read_bytes())     # bootBuf needs to be writable
-            if len(bootBuf) != Grub.DISK_SECTOR_SIZE:
-                raise Exception("the size of '%s' is not %u" % (bootImgFile, Grub.DISK_SECTOR_SIZE))
-
-            coreBuf = pathlib.Path(coreImgFile).read_bytes()
-            if len(coreBuf) < Grub.DISK_SECTOR_SIZE:
-                raise Exception("the size of '%s' is too small" % (coreImgFile))
-            if len(coreBuf) > cls._getCoreImgMaxSize():
-                raise Exception("the size of '%s' is too large" % (coreImgFile))
-
-            with open(dev, "rb") as f:
+            with open(dev, "rb+") as f:
                 tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
 
                 # Copy the possible DOS BPB.
-                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END + 1
+                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
                 bootBuf[s:e] = tmpBuf[s:e]
 
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
@@ -466,10 +484,10 @@ class _Bios:
 
                 # Copy the partition table.
                 if not bAllowFloppy and not bFloppyOrHdd:
-                    s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END + 1
+                    s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                     bootBuf[s:e] = tmpBuf[s:e]
 
-            with open(dev, "wb") as f:
+                f.seek(0)
                 if bAddRsCodes:
                     assert False
                 else:

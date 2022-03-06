@@ -135,6 +135,7 @@ class Grub:
     BOOT_MACHINE_BPB_START	= 0x3
 
     # The offset of the end of BPB (BIOS Parameter Block).
+    # note: this is the next position of the end
     BOOT_MACHINE_BPB_END = 0x5a
 
     # The offset of BOOT_DRIVE_CHECK.
