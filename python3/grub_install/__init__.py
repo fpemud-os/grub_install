@@ -44,8 +44,6 @@ from ._source import Source
 
 from ._target import Target
 
-from ._errors import CheckCode
-
 from ._errors import SourceError
 from ._errors import CopySourceError
 from ._errors import TargetError

@@ -537,7 +537,7 @@ class _Bios:
                         assert False
                 if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreImgMaxSize():
                     if exceptionClass is not None:
-                        raise exceptionClass("'%s' has no MBR gap or its MBR gap is too small" % (dev)))
+                        raise exceptionClass("'%s' has no MBR gap or its MBR gap is too small" % (dev))
                     else:
                         assert False
             finally:
@@ -662,21 +662,10 @@ def _newNotExistPlatformInstallInfo():
     return ret
 
 
-# class _Sparc:
-#
-#     @staticmethod
-#     def install_platform(p, platform_type, source):
-#         grub_util_sparc_setup("boot.img", "core.img", dev, force?, fs_probe?, allow_floppy?, add_rs_codes?, )
-#         grub_set_install_backup_ponr()
-
-
-
-
-
 #     @staticmethod
 #     def install_platform_for_iso(platform_type, source, bootDir, dev, bHddOrFloppy, bInstallMbr):
 
-#         if 
+#         if
 
 
 
@@ -688,15 +677,15 @@ def _newNotExistPlatformInstallInfo():
 #       grub_install_push_module ("biosdisk");
 #       grub_install_push_module ("iso9660");
 #       grub_install_make_image_wrap (source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
-# 				    "/boot/grub", output,
-# 				    0, load_cfg,
-# 				    "i386-pc-eltorito", 0);
+#             "/boot/grub", output,
+#             0, load_cfg,
+#             "i386-pc-eltorito", 0);
 #       xorriso_push ("-boot-load-size");
 #       xorriso_push ("4");
 #       xorriso_push ("-boot-info-table");
 
 # 	      char *boot_hybrid = grub_util_path_concat (2, source_dirs[GRUB_INSTALL_PLATFORM_I386_PC],
-# 							 "boot_hybrid.img");
+#             	 "boot_hybrid.img");
 # 	      xorriso_push ("--grub2-boot-info");
 # 	      xorriso_push ("--grub2-mbr");
 # 	      xorriso_push (boot_hybrid);
@@ -716,7 +705,7 @@ def _newNotExistPlatformInstallInfo():
 #   grub_install_pop_module ();
 
 #   make_image_fwdisk (GRUB_INSTALL_PLATFORM_SPARC64_IEEE1275,
-# 		     "sparc64-ieee1275-cdcore", "sparc64-ieee1275/core.img");
+#          "sparc64-ieee1275-cdcore", "sparc64-ieee1275/core.img");
 
 
 
@@ -725,10 +714,6 @@ def _newNotExistPlatformInstallInfo():
 
 # self.pubkey = XXX         # --pubkey=FILE
 # self.compress = XXX       # --compress=no|xz|gz|lzo
-
-# we won't support:
-# 1. 
-
 
 
 

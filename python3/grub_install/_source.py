@@ -73,7 +73,7 @@ class Source:
         return ret
 
     def get_platform_directory(self, platform_type):
-        assert platform_type in self._platforms
+        assert isinstance(platform_type, PlatformType)
         ret = os.path.join(self._libDir, platform_type.value)
         assert os.path.exists(ret)
         return ret
@@ -150,7 +150,7 @@ class Source:
             tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._localeDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_locale_files().values():
-                fullfn2 = os.path.join(dest_dir, rel_path(self._localeDir, fullfn))
+                fullfn2 = os.path.join(tdir, rel_path(self._localeDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_files(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
@@ -160,10 +160,10 @@ class Source:
 
         # copy font files
         if self.supports(self.CAP_FONTS):
-            tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._libDir))
+            tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._shareDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_font_files().values():
-                fullfn2 = os.path.join(dest_dir, rel_path(self._libDir, fullfn))
+                fullfn2 = os.path.join(tdir, rel_path(self._shareDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_files(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
@@ -175,7 +175,7 @@ class Source:
             tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._themesDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_theme_directories().values():
-                fullfn2 = os.path.join(dest_dir, rel_path(self._themesDir, fullfn))
+                fullfn2 = os.path.join(tdir, rel_path(self._themesDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_directories(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))

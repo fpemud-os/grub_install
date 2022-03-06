@@ -26,11 +26,9 @@ import shutil
 import filecmp
 
 
-
 def rel_path(baseDir, path):
-    if not baseDir.endswith("/"):
-        baseDir += "/"
-    return path.replace(baseDir, "")
+    assert path.startswith(baseDir)
+    return os.path.relpath(path, baseDir)
 
 
 def force_rm(path):
