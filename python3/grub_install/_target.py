@@ -399,9 +399,11 @@ class _Bios:
         if dev is not None:
             tmpBootBuf = None
             tmpCoreBuf = None
+            tmpRestBuf = None
             with open(dev, "rb") as f:
                 tmpBootBuf = f.read(Grub.DISK_SECTOR_SIZE)
                 tmpCoreBuf = f.read(len(coreBuf))
+                tmpRestBuf = f.read(cls._getCoreImgMaxSize() - len(coreBuf) - Grub.DISK_SECTOR_SIZE)
 
             # see comment in cls.install_platform()
             s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
@@ -423,6 +425,8 @@ class _Bios:
                 raise TargetError("invalid MBR record content")
             if tmpCoreBuf != coreBuf:
                 raise TargetError("invalid on-disk core.img content")
+            if tmpRestBuf != b'\0' * len(tmpRestBuf):
+                raise TargetError("disk content after core.img should be all zero")
 
         # fill custom attributes
         platform_install_info.mbr_installed = (dev is not None)
@@ -493,6 +497,7 @@ class _Bios:
                 else:
                     f.write(bootBuf)
                     f.write(coreBuf)
+                    f.write(b'\0' * (cls._getCoreImgMaxSize() - len(coreBuf) - Grub.DISK_SECTOR_SIZE))
 
         # fill custom attributes
         platform_install_info.mbr_installed = bInstallMbr

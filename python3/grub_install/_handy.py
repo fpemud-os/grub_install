@@ -135,8 +135,7 @@ class Grub:
     BOOT_MACHINE_BPB_START	= 0x3
 
     # The offset of the end of BPB (BIOS Parameter Block).
-    # note: this is the next position of the end
-    BOOT_MACHINE_BPB_END = 0x5a
+    BOOT_MACHINE_BPB_END = 0x5a                                 # note: this is end+1
 
     # The offset of BOOT_DRIVE_CHECK.
     BOOT_MACHINE_DRIVE_CHECK = 0x66
@@ -148,7 +147,7 @@ class Grub:
     BOOT_MACHINE_PART_START = 0x1be
 
     # The offset of the end of the partition table.
-    BOOT_MACHINE_PART_END = 0x1fe
+    BOOT_MACHINE_PART_END = 0x1fe                               # note: this is end+1
 
     KERNEL_I386_PC_LINK_ADDR = 0x9000
 
