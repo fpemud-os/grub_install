@@ -237,28 +237,29 @@ class Grub:
 
     @classmethod
     def checkPlatformFiles(cls, platform_type, source, grub_dir):
-        platDirSrc = source.get_platform_directory(platform_type)
-        platDirDst = os.path.join(grub_dir, platform_type.value)
-
         def __check(fullfn, fullfn2):
             if not os.path.exists(fullfn2):
-                return CheckError("%s does not exist" % (fullfn2))
+                raise CheckError("%s does not exist" % (fullfn2))
             if not compare_files(fullfn, fullfn2):
-                return CheckError("%s and %s are different" % (fullfn, fullfn2))
+                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
 
-        # check destination directory
+        # get and check source directory
+        platDirSrc = source.try_get_platform_directory(platform_type)
+        if platDirSrc is None:
+            raise CheckError("%s does not exist" % (platDirSrc))
+
+        # get and check destination directory
+        platDirDst = os.path.join(grub_dir, platform_type.value)
         if not os.path.exists(platDirDst):
-            return CheckError("%s does not exist" % (platDirDst))
+            raise CheckError("%s does not exist" % (platDirDst))
 
         # check module files
         for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            fullfn2 = os.path.join(platDirDst, os.path.basename(fullfn))
-            __check(fullfn, fullfn2)
+            __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
 
         # check other files
         for fn in cls.OTHER_FILES:
-            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
-            __check(fullfn, fullfn2)
+            __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
 
         # check optional files
         for fn in cls.OPTIONAL_FILES:
@@ -288,7 +289,7 @@ class Grub:
                 raise CheckError("nls is not supported")
             for fullfn2 in glob.glob(os.path.join(dstDir, "locales", "**", "*.mo")):
                 ln = rel_path(dstDir, fullfn2).split("/")[1]
-                
+
 
 
     @staticmethod
