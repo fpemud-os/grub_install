@@ -596,7 +596,7 @@ class _Efi:
             raise TargetError("%s does not exist" % (coreFullfn))
         if not os.path.exists(efiFullfn):
             raise TargetError("%s does not exist" % (efiFullfn))
-        if compare_files(coreFullfn, efiFullfn):
+        if not compare_files(coreFullfn, efiFullfn):
             raise TargetError("%s and %s are different" % (coreFullfn, efiFullfn))
 
         platform_install_info.removable = True
