@@ -747,5 +747,3 @@ def _newNotExistPlatformInstallInfo():
 # sparc64-ieee1275-raw
 # sparc64-ieee1275-cdcore
 # sparc64-ieee1275-aout
-
-
