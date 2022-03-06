@@ -132,7 +132,9 @@ class Target(abc.ABC):
         ret.status = PlatformInstallInfo.Status.BOOTABLE
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            _Common.install_platform(self, platform_type, source, tmpDir=kwargs.get("tmp_dir", None))
+            _Common.install_platform(self, platform_type, source,
+                                     tmpDir=kwargs.get("tmp_dir", None),
+                                     debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_platform(platform_type, ret, source, self._bootDir,
                                        self._dev,                                           # dev
@@ -150,7 +152,9 @@ class Target(abc.ABC):
             # FIXME
             assert False
         elif self._targetType == TargetType.ISO_DIR:
-            _Common.install_platform(self, platform_type, source, tmpDir=kwargs.get("tmp_dir", None))
+            _Common.install_platform(self, platform_type, source,
+                                     tmpDir=kwargs.get("tmp_dir", None),
+                                     debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_platform(platform_type, ret, source, self._bootDir,
                                        None,                                                # dev
@@ -280,7 +284,7 @@ class _Common:
                     pass
 
     @staticmethod
-    def install_platform(p, platform_type, source, tmpDir=None):
+    def install_platform(p, platform_type, source, tmpDir=None, debugImage=None):
         mnt = Grub.probeMnt(p._bootDir)
         if mnt.fs_uuid is None:
             raise InstallError("no fsuuid found")
@@ -333,6 +337,8 @@ class _Common:
 
         # generate load.cfg for core.img
         buf = ""
+        if debugImage is not None:
+            buf += "set debug='%s'\n" % (debugImage)
         buf += "search.fs_uuid %s root%s\n" % (mnt.fs_uuid, (" " + hints) if hints != "" else "")
         buf += "set prefix=($root)'%s'\n" % (Grub.escape(rel_path(mnt.mnt_dir, grubDir)))
 
