@@ -390,11 +390,11 @@ class _Bios:
                 tmpCoreBuf = f.read(len(coreBuf))
 
             # see comment in cls.install_platform()
-            s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+            s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END + 1
             bootBuf[s:e] = tmpBootBuf[s:e]
 
             # see comment in cls.install_platform()
-            s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+2
+            s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
             if tmpBootBuf[s:e] == b'\x90\x90':
                 bootBuf[s:e] = tmpBootBuf[s:e]
                 bAllowFloppy = False
@@ -402,7 +402,7 @@ class _Bios:
                 bAllowFloppy = True
 
             # see comment in cls.install_platform()
-            s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+            s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END + 1
             bootBuf[s:e] = tmpBootBuf[s:e]
 
             if tmpBootBuf != bootBuf:
@@ -442,7 +442,7 @@ class _Bios:
                 tmpBuf = f.read(Grub.DISK_SECTOR_SIZE)
 
                 # Copy the possible DOS BPB.
-                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END + 1
                 bootBuf[s:e] = tmpBuf[s:e]
 
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
@@ -450,12 +450,12 @@ class _Bios:
                 # they pass 0x00 or 0x01 even when booted from 0x80.
                 if not bAllowFloppy and not bFloppyOrHdd:
                     # Replace the jmp (2 bytes) with double nop's.
-                    s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK+2
+                    s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
                     bootBuf[s:e] == b'\x90\x90'
 
                 # Copy the partition table.
                 if not bAllowFloppy and not bFloppyOrHdd:
-                    s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
+                    s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END + 1
                     bootBuf[s:e] = tmpBuf[s:e]
 
             with open(dev, "wb") as f:
