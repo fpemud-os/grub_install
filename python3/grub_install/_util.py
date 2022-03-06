@@ -88,3 +88,10 @@ def compare_directories(dirpath1, dirpath2):
         if not filecmp.cmp(os.path.join(dirpath1, fn), os.path.join(dirpath2, fn), shallow=False):
             return False
     return True
+
+
+def is_buffer_all_zero(buf):
+    for b in buf:
+        if b != 0:
+            return False
+    return True
