@@ -46,7 +46,10 @@ class Target(abc.ABC):
         # target specific variables
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             self._rootfsDir = kwargs.get("rootfs_dir", None)
-            self._bootDir = kwargs.get("boot_dir", os.path.join(self._rootfsDir, "boot"))
+            if "boot_dir" in kwargs:
+                self._bootDir = kwargs["boot_dir"]
+            else:
+                self._bootDir = os.path.join(self._rootfsDir, "boot")
             self._dev = kwargs["dev"]
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
@@ -348,7 +351,7 @@ class _Common:
         buf += "set prefix=($root)'%s'\n" % (Grub.escape(rel_path(mnt.mnt_dir, grubDir)))
 
         # make core.img
-        coreName, mkimageTarget = Grub.getCoreImgNameAndTarget()
+        coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
         coreImgPath = os.path.join(grubDir, platform_type.value, coreName)
         Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, coreImgPath, tmp_dir=tmpDir)
 
@@ -586,7 +589,7 @@ class _Efi:
 
     @staticmethod
     def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
-        coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget()[0])
+        coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget(platform_type)[0])
         efiFullfn = os.path.join(bootDir, "EFI", "BOOT", Handy.getStandardEfiFilename(platform_type))
 
         if not os.path.exists(coreFullfn):
@@ -615,7 +618,7 @@ class _Efi:
         force_mkdir(efiDirLv2)
 
         # copy efi file
-        coreName = Grub.getCoreImgNameAndTarget()[0]
+        coreName = Grub.getCoreImgNameAndTarget(platform_type)[0]
         shutil.copy(os.path.join(grubPlatDir, coreName), os.path.join(efiDirLv2, efiFn))
 
         # fill custom attributes

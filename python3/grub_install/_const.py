@@ -73,6 +73,9 @@ class PlatformInstallInfo:
     def __init__(self):
         self.status = None
 
+    def __repr__(self):
+        return "<%s %r>" % (self.__class__.__name__, self.__dict__)
+
 
 #    MOUNTED_FDD_DEV = enum.auto()            # floppy device
 #    MOUNTED_HDD_DEV_APPLE = enum.auto()      # apple device
