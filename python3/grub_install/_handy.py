@@ -25,6 +25,7 @@ import os
 import glob
 import shutil
 import psutil
+import tempfile
 import subprocess
 from ._util import force_mkdir
 from ._const import PlatformType
@@ -271,9 +272,12 @@ class Grub:
                 shutil.copytree(source.get_theme_directory(x), dstDir)
 
     @staticmethod
-    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path):
-        assert load_cfg_file_content# fixme
-        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file_content, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", out_path] + module_list)
+    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path, tmp_dir=None):
+        with tempfile.TemporaryDirectory(dir=tmp_dir) as tmpdir:
+            loadCfgFile = os.path.join(tmpdir, "load.cfg")
+            with open(loadCfgFile, "w") as f:
+                f.write(load_cfg_file_content)
+            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", out_path] + module_list)
 
     @staticmethod
     def probeMnt(dir):
@@ -321,3 +325,6 @@ class Grub:
 
         return Mnt(ret.device, fs, fs_uuid, ret.mountpoint, ret.opts, bios_hints, efi_hints)
 
+    @staticmethod
+    def escape(in_str):
+        return in_str.replace('\'', "'\\''")
