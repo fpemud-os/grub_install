@@ -177,8 +177,7 @@ class Target(abc.ABC):
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                if self._platforms[platform_type].mbr_installed:
-                    _Bios.remove_from_mbr(platform_type, self._dev)
+                _Bios.remove_from_mbr(platform_type, self._dev)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.remove_from_efi_dir(platform_type, self._bootDir)
             else:
