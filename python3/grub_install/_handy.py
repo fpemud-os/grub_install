@@ -303,8 +303,6 @@ class Grub:
 
         try:
             bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", ret.device], universal_newlines=True).rstrip("\n")
-            if bios_hints == "":
-                bios_hints = None
         except subprocess.CalledProcessError:
             bios_hints = ""
 
