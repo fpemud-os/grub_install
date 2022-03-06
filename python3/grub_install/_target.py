@@ -248,32 +248,20 @@ class Target(abc.ABC):
         _Efi.remove_remaining_crufts(self._bootDir)
         _Common.remove_remaining_crufts(self)
 
-    def check(self, auto_fix=False):
-        assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
-
-        if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            _Common.check(self, auto_fix)
-        elif self._targetType == TargetType.PYCDLIB_OBJ:
-            # FIXME
-            assert False
-        elif self._targetType == TargetType.ISO_DIR:
-            _Common.check(self, auto_fix)
-        else:
-            assert False
-
     def check_with_source(self, source, auto_fix=False):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
-        if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            _Common.check_with_source(self, source, auto_fix)
-        elif self._targetType == TargetType.PYCDLIB_OBJ:
-            # FIXME
-            assert False
-        elif self._targetType == TargetType.ISO_DIR:
-            _Common.check_with_source(self, source, auto_fix)
-        else:
-            assert False
+        for pt in self._platforms:
+            if self._targetType == TargetType.MOUNTED_HDD_DEV:
+                _Common.check_with_source(self, pt, source, auto_fix)
+            elif self._targetType == TargetType.PYCDLIB_OBJ:
+                # FIXME
+                assert False
+            elif self._targetType == TargetType.ISO_DIR:
+                _Common.check_with_source(self, pt, source, auto_fix)
+            else:
+                assert False
 
 
 class _Common:
@@ -365,7 +353,7 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check(p, auto_fix):
+    def check(p, platform_type, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
         if os.path.isdir(grubDir):
             pset = set([x.value for x in p._platforms])
@@ -377,7 +365,11 @@ class _Common:
                 raise Exception("")     # FIXME
 
     @staticmethod
-    def check_with_source(p, source, auto_fix):
+    def check_with_source(p, platform_type, source, auto_fix):
+        grubDir = os.path.join(p._bootDir, "grub")
+        Grub.checkPlatformFiles(platform_type, source, grubDir)
+
+
         # FIXME
         pass
 

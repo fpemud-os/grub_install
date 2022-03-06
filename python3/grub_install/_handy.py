@@ -27,8 +27,9 @@ import shutil
 import psutil
 import tempfile
 import subprocess
-from ._util import force_mkdir
+from ._util import force_mkdir, compare_files
 from ._const import PlatformType
+from ._errors import CheckError
 
 
 class Handy:
@@ -154,6 +155,10 @@ class Grub:
     # Offset of field holding no reed solomon length.
     KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH = 0x14
 
+    OTHER_FILES = ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]
+
+    OPTIONAL_FILES = ["efiemu32.o", "efiemu64.o"]
+
     @staticmethod
     def getCoreImgNameAndTarget(platform_type):
         if platform_type == PlatformType.I386_PC:
@@ -206,28 +211,60 @@ class Grub:
 
         os.rename(tmpName, name)
 
-    @staticmethod
-    def copyPlatformFiles(platform_type, source, grub_dir):
+    @classmethod
+    def copyPlatformFiles(cls, platform_type, source, grub_dir):
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(grub_dir, platform_type.value)
 
         force_mkdir(platDirDst, clear=True)
 
         # copy module files
-        for fn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
+        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+            shutil.copy(fullfn, platDirDst)
             # FIXME: specify owner, group, mode?
 
         # copy other files
-        for fn in ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]:
+        for fn in cls.OTHER_FILES:
             shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
             # FIXME: specify owner, group, mode?
 
         # copy optional files
-        for fn in ["efiemu32.o", "efiemu64.o"]:
-            if os.path.exists(os.path.join(platDirSrc, fn)):
-                shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
+        for fn in cls.OPTIONAL_FILES:
+            fullfn = os.path.join(platDirSrc, fn)
+            if os.path.exists(fullfn):
+                shutil.copy(fullfn, platDirDst)
                 # FIXME: specify owner, group, mode?
+
+    @classmethod
+    def checkPlatformFiles(cls, platform_type, source, grub_dir):
+        platDirSrc = source.get_platform_directory(platform_type)
+        platDirDst = os.path.join(grub_dir, platform_type.value)
+
+        def __check(fullfn, fullfn2):
+            if not os.path.exists(fullfn2):
+                return CheckError("%s does not exist" % (fullfn2))
+            if not compare_files(fullfn, fullfn2):
+                return CheckError("%s and %s are different" % (fullfn, fullfn2))
+
+        # check destination directory
+        if not os.path.exists(platDirDst):
+            return CheckError("%s does not exist" % (platDirDst))
+
+        # check module files
+        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+            fullfn2 = os.path.join(platDirDst, os.path.basename(fullfn))
+            __check(fullfn, fullfn2)
+
+        # check other files
+        for fn in cls.OTHER_FILES:
+            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
+            __check(fullfn, fullfn2)
+
+        # check optional files
+        for fn in cls.OPTIONAL_FILES:
+            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
+            if os.path.exists(fullfn):
+                __check(fullfn, fullfn2)
 
     @staticmethod
     def copyLocaleFiles(source, grub_dir, locales):
