@@ -248,12 +248,15 @@ class Grub:
         if not os.path.exists(platDirDst):
             raise CheckError("%s does not exist" % (platDirDst))
 
+        fileSet = set()
+
         def __check(fullfn, fullfn2):
             # FIXME: check owner, group, mode?
             if not os.path.exists(fullfn2):
                 raise CheckError("%s does not exist" % (fullfn2))
             if not compare_files(fullfn, fullfn2):
                 raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+            fileSet.add(fullfn2)
 
         # check module files
         for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
@@ -268,6 +271,11 @@ class Grub:
             fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
             if os.path.exists(fullfn):
                 __check(fullfn, fullfn2)
+
+        # redundant files
+        ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
+        if len(ret) > 0:
+            raise CheckError("redundant files %s found" % (", ".join(ret)))
 
     @staticmethod
     def copyLocaleFiles(source, grub_dir, locales):
