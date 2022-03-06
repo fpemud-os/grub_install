@@ -22,6 +22,7 @@
 
 
 import os
+import glob
 import shutil
 import psutil
 import subprocess
@@ -153,12 +154,6 @@ class Grub:
     KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH = 0x14
 
     @staticmethod
-    def getGrubFsName(fs_name):
-        if fs_name == "vfat":
-            return "fat"
-        return fs_name
-
-    @staticmethod
     def getCoreImgNameAndTarget(platform_type):
         if platform_type == PlatformType.I386_PC:
             core_name = "core.img"
@@ -212,15 +207,26 @@ class Grub:
 
     @staticmethod
     def copyPlatformFiles(platform_type, source, grub_dir):
-        # install modules and friends
-        platDirSrc = os.path.join(source.get_platform_dir(platform_type))
+        platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(grub_dir, platform_type.value)
+
         force_mkdir(platDirDst, clear=True)
-        for fn in os.listdir(platDirSrc):
-            if fn.endswith(".mod"):
-                shutil.copy(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
-        for fn in ["efiemu32.o", "efiemu64.o", "moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]:
-            shutil.copy(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
+
+        # copy module files
+        for fn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+            shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
+            # FIXME: specify owner, group, mode?
+
+        # copy other files
+        for fn in ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]:
+            shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
+            # FIXME: specify owner, group, mode?
+
+        # copy optional files
+        for fn in ["efiemu32.o", "efiemu64.o"]:
+            if os.path.exists(os.path.join(platDirSrc, fn)):
+                shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
+                # FIXME: specify owner, group, mode?
 
     @staticmethod
     def copyLocaleFiles(source, grub_dir, locales):
@@ -259,8 +265,9 @@ class Grub:
                 shutil.copytree(source.get_theme_directory(x), dstDir)
 
     @staticmethod
-    def makeCoreImage(source, platform_type, load_cfg_file, mkimage_target, module_list, out_path):
-        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file, "-O", mkimage_target, "-d", source.get_platform_dir(platform_type), "-o", out_path] + module_list)
+    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path):
+        assert load_cfg_file_content# fixme
+        subprocess.check_call(["grub-mkimage", "-c", load_cfg_file_content, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", out_path] + module_list)
 
     @staticmethod
     def probeMnt(dir):
@@ -297,11 +304,11 @@ class Grub:
             efi_hints = ""
 
         class Mnt:
-            def __init__(self, dev, fs, fs_uuid, mnt_pt, mnt_opts, bios_hints, efi_hints):
+            def __init__(self, dev, fs, fs_uuid, mnt_dir, mnt_opts, bios_hints, efi_hints):
                 self.dev = dev
                 self.fs = fs
                 self.fs_uuid = fs_uuid
-                self.mnt_pt = mnt_pt
+                self.mnt_dir = mnt_dir
                 self.mnt_opts = mnt_opts
                 self.bios_hints = bios_hints
                 self.efi_hints = efi_hints

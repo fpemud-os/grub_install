@@ -26,6 +26,13 @@ import shutil
 import filecmp
 
 
+
+def rel_path(baseDir, path):
+    if not baseDir.endswith("/"):
+        baseDir += "/"
+    return path.replace(baseDir, "")
+
+
 def force_rm(path):
     if os.path.islink(path):
         os.remove(path)

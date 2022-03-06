@@ -24,7 +24,7 @@
 import os
 import glob
 import shutil
-from ._util import compare_files, compare_directories
+from ._util import rel_path, compare_files, compare_directories
 from ._const import PlatformType
 from ._errors import SourceError, CopySourceError
 
@@ -74,7 +74,9 @@ class Source:
 
     def get_platform_directory(self, platform_type):
         assert platform_type in self._platforms
-        return os.path.join(self._libDir, platform_type.value)
+        ret = os.path.join(self._libDir, platform_type.value)
+        assert os.path.exists(ret)
+        return ret
 
     def get_all_locale_files(self):
         assert self.supports(self.CAP_NLS)
@@ -133,10 +135,10 @@ class Source:
         assert os.path.isdir(dest_dir)
 
         # copy platform directories
-        tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._libDir))
+        tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._libDir))
         os.makedirs(tdir, exist_ok=True)
         for fullfn in self.get_all_platform_directories().values():
-            fullfn2 = os.path.join(tdir, _rel_path(self._libDir, fullfn))
+            fullfn2 = os.path.join(tdir, rel_path(self._libDir, fullfn))
             if os.path.exists(fullfn2):
                 if not compare_directories(fullfn, fullfn2):
                     raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
@@ -145,10 +147,10 @@ class Source:
 
         # copy locale files
         if self.supports(self.CAP_NLS):
-            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._localeDir))
+            tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._localeDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_locale_files().values():
-                fullfn2 = os.path.join(dest_dir, _rel_path(self._localeDir, fullfn))
+                fullfn2 = os.path.join(dest_dir, rel_path(self._localeDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_files(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
@@ -158,10 +160,10 @@ class Source:
 
         # copy font files
         if self.supports(self.CAP_FONTS):
-            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._libDir))
+            tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._libDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_font_files().values():
-                fullfn2 = os.path.join(dest_dir, _rel_path(self._libDir, fullfn))
+                fullfn2 = os.path.join(dest_dir, rel_path(self._libDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_files(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
@@ -170,18 +172,12 @@ class Source:
 
         # copy theme directories
         if self.supports(self.CAP_THEMES):
-            tdir = os.path.join(dest_dir, _rel_path(self._baseDir, self._themesDir))
+            tdir = os.path.join(dest_dir, rel_path(self._baseDir, self._themesDir))
             os.makedirs(tdir, exist_ok=True)
             for fullfn in self.get_all_theme_directories().values():
-                fullfn2 = os.path.join(dest_dir, _rel_path(self._themesDir, fullfn))
+                fullfn2 = os.path.join(dest_dir, rel_path(self._themesDir, fullfn))
                 if os.path.exists(fullfn2):
                     if not compare_directories(fullfn, fullfn2):
                         raise CopySourceError("%s and %s are different" % (fullfn, fullfn2))
                 else:
                     shutil.copytree(fullfn, fullfn2)
-
-
-def _rel_path(baseDir, path):
-    if not baseDir.endswith("/"):
-        baseDir += "/"
-    return path.replace(baseDir, "")

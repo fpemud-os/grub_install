@@ -27,9 +27,9 @@ import abc
 import shutil
 import parted
 import pathlib
-from ._util import force_rm, force_mkdir, rmdir_if_empty, compare_files
+from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_files
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
-from ._errors import TargetError
+from ._errors import TargetError, InstallError
 from ._handy import Handy, Grub
 from ._source import Source
 
@@ -283,26 +283,35 @@ class _Common:
     def install_platform(p, platform_type, source):
         mnt = Grub.probeMnt(p._bootDir)
         if mnt.fs_uuid is None:
-            raise Exception("")     # FIXME
+            raise InstallError("no fsuuid found")
+        if Handy.isPlatformEfi(platform_type) and (mnt.mnt_dir != p._bootDir or mnt.fs != "fat"):
+            raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
         grubDir = os.path.join(p._bootDir, "grub")
-        relGrubDir = grubDir.replace(mnt.mnt_pt, "")
-
         moduleList = []
 
         # disk module
         if platform_type == PlatformType.I386_PC:
             disk_module = "biosdisk"
+            hints = mnt.bios_hints
         elif platform_type == PlatformType.I386_MULTIBOOT:
             disk_module = "native"
+            hints = ""
+        elif Handy.isPlatformEfi(platform_type):
+            disk_module = None
+            hints = mnt.efi_hints
         elif Handy.isPlatformCoreboot(platform_type):
             disk_module = "native"
+            hints = ""
         elif Handy.isPlatformQemu(platform_type):
             disk_module = "native"
+            hints = ""
         elif platform_type == PlatformType.MIPSEL_LOONGSON:
             disk_module = "native"
+            hints = ""
         else:
             disk_module = None
+            hints = ""
 
         if disk_module is None:
             pass
@@ -316,25 +325,21 @@ class _Common:
             assert False
 
         # fs module
-        if Handy.isPlatformEfi(platform_type):
-            if mnt.fs != "vfat":
-                raise Exception("%s doesn't look like an EFI partition" % (p._bootDir))
-        moduleList.append(Grub.getGrubFsName(mnt.fs))
+        moduleList.append(mnt.fs)
+        moduleList.append("search_fs_uuid")
 
         # install files
         Grub.copyPlatformFiles(platform_type, source, grubDir)
 
         # generate load.cfg for core.img
-        loadCfgFile = os.path.join(grubDir, platform_type.value, "load.cfg")
-        with open(loadCfgFile, "w") as f:
-            moduleList.append("search_fs_uuid")
-            f.write("search.fs_uuid %s root %s\n" % (mnt.fs_uuid, ""))  # FIXME: should add hints to raise performance
-            f.write("set prefix=($root)'%s'\n" % (relGrubDir))          # FIXME: relGrubDir should be escaped
+        buf = ""
+        buf += "search.fs_uuid %s root%s\n" % (mnt.fs_uuid, (" " + hints) if hints != "" else "")
+        buf += "set prefix=($root)'%s'\n" % (rel_path(mnt.mnt_dir, grubDir))            # FIXME: relGrubDir should be escaped
 
         # make core.img
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget()
-        coreImgFile = os.path.join(grubDir, platform_type.value, coreName)
-        Grub.makeCoreImage(source, platform_type, loadCfgFile, mkimageTarget, moduleList, coreImgFile)
+        coreImgPath = os.path.join(grubDir, platform_type.value, coreName)
+        Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, coreImgPath)
 
     @staticmethod
     def remove_platform(p, platform_type):
@@ -422,7 +427,7 @@ class _Bios:
         bootImgFile = os.path.join(bootDir, "grub", "boot.img")
 
         # copy boot.img file
-        shutil.copy(os.path.join(source.get_platform_dir(platform_type), "boot.img"), bootImgFile)
+        shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), bootImgFile)
 
         # install into device bios mbr
         if bInstallMbr:
