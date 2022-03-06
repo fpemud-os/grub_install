@@ -218,31 +218,26 @@ class Grub:
 
         force_mkdir(platDirDst, clear=True)
 
+        def __copy(fullfn, dstDir):
+            # FIXME: specify owner, group, mode?
+            shutil.copy(fullfn, platDirDst)
+
         # copy module files
         for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            shutil.copy(fullfn, platDirDst)
-            # FIXME: specify owner, group, mode?
+            __copy(fullfn, platDirDst)
 
         # copy other files
         for fn in cls.OTHER_FILES:
-            shutil.copy(os.path.join(platDirSrc, fn), platDirDst)
-            # FIXME: specify owner, group, mode?
+            __copy(os.path.join(platDirSrc, fn), platDirDst)
 
         # copy optional files
         for fn in cls.OPTIONAL_FILES:
             fullfn = os.path.join(platDirSrc, fn)
             if os.path.exists(fullfn):
-                shutil.copy(fullfn, platDirDst)
-                # FIXME: specify owner, group, mode?
+                __copy(fullfn, platDirDst)
 
     @classmethod
     def checkPlatformFiles(cls, platform_type, source, grub_dir):
-        def __check(fullfn, fullfn2):
-            if not os.path.exists(fullfn2):
-                raise CheckError("%s does not exist" % (fullfn2))
-            if not compare_files(fullfn, fullfn2):
-                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-
         # get and check source directory
         platDirSrc = source.try_get_platform_directory(platform_type)
         if platDirSrc is None:
@@ -252,6 +247,13 @@ class Grub:
         platDirDst = os.path.join(grub_dir, platform_type.value)
         if not os.path.exists(platDirDst):
             raise CheckError("%s does not exist" % (platDirDst))
+
+        def __check(fullfn, fullfn2):
+            # FIXME: check owner, group, mode?
+            if not os.path.exists(fullfn2):
+                raise CheckError("%s does not exist" % (fullfn2))
+            if not compare_files(fullfn, fullfn2):
+                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
 
         # check module files
         for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
