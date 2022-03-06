@@ -73,10 +73,18 @@ class Source:
         return ret
 
     def get_platform_directory(self, platform_type):
+        ret = self.try_get_platform_directory(platform_type)
+        assert ret is not None
+        return ret
+
+    def try_get_platform_directory(self, platform_type):
         assert isinstance(platform_type, PlatformType)
         ret = os.path.join(self._libDir, platform_type.value)
-        assert os.path.exists(ret)
-        return ret
+        if os.path.exists(ret):
+            assert os.path.isdir(ret)
+            return ret
+        else:
+            return None
 
     def get_all_locale_files(self):
         assert self.supports(self.CAP_NLS)
@@ -89,10 +97,18 @@ class Source:
         return ret
 
     def get_locale_file(self, locale_name):
+        ret = self.try_get_locale_file(locale_name)
+        assert ret is not None
+        return ret
+
+    def try_get_locale_file(self, locale_name):
         assert self.supports(self.CAP_NLS)
         ret = os.path.join(self._localeDir, locale_name, "LC_MESSAGES", "grub.mo")
-        assert os.path.exists(ret)
-        return ret
+        if os.path.exists(ret):
+            assert os.path.isfile(ret)
+            return ret
+        else:
+            return None
 
     def get_all_font_files(self):
         assert self.supports(self.CAP_FONTS)
@@ -104,10 +120,18 @@ class Source:
         return ret
 
     def get_font_file(self, font_name):
+        ret = self.try_get_font_file(font_name)
+        assert ret is not None
+        return ret
+
+    def try_get_font_file(self, font_name):
         assert self.supports(self.CAP_FONTS)
         ret = os.path.join(self._shareDir, font_name + ".pf2")
-        assert os.path.exists(ret)
-        return ret
+        if os.path.exists(ret):
+            assert os.path.isfile(ret)
+            return ret
+        else:
+            return None
 
     def get_default_font(self):
         assert self.supports(self.CAP_FONTS)
@@ -122,10 +146,18 @@ class Source:
         return ret
 
     def get_theme_directory(self, theme_name):
+        ret = self.try_get_theme_directory(theme_name)
+        assert ret is not None
+        return ret
+
+    def try_get_theme_directory(self, theme_name):
         assert self.supports(self.CAP_THEMES)
         ret = os.path.join(self._themesDir, theme_name)
-        assert os.path.isdir(ret)
-        return ret
+        if os.path.exists(ret):
+            assert os.path.isdir(ret)
+            return ret
+        else:
+            return None
 
     def get_default_theme(self):
         assert self.supports(self.CAP_THEMES)

@@ -27,7 +27,7 @@ import shutil
 import psutil
 import tempfile
 import subprocess
-from ._util import force_mkdir, compare_files
+from ._util import rel_path, force_mkdir, compare_files
 from ._const import PlatformType
 from ._errors import CheckError
 
@@ -279,6 +279,17 @@ class Grub:
         else:
             for x in locales:
                 shutil.copy(source.get_locale_file(x), "%s.mo" % (x))
+
+    @staticmethod
+    def checkLocaleFiles(source, grub_dir):
+        dstDir = os.path.join(grub_dir, "locales")
+        if os.path.exists(dstDir):
+            if not source.supports(source.CAP_NLS):
+                raise CheckError("nls is not supported")
+            for fullfn2 in glob.glob(os.path.join(dstDir, "locales", "**", "*.mo")):
+                ln = rel_path(dstDir, fullfn2).split("/")[1]
+                
+
 
     @staticmethod
     def copyFontFiles(source, grub_dir, fonts):
