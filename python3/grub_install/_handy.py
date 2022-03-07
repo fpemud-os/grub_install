@@ -157,7 +157,7 @@ class Grub:
 
     PLATFORM_ADDON_FILES = ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]
 
-    PLATFORM_OPT_ADDON_FILES = ["efiemu32.o", "efiemu64.o"]
+    PLATFORM_OPTIONAL_ADDON_FILES = ["efiemu32.o", "efiemu64.o"]
 
     @staticmethod
     def getCoreImgNameAndTarget(platform_type):
@@ -231,7 +231,7 @@ class Grub:
             __copy(os.path.join(platDirSrc, fn), platDirDst)
 
         # copy optional files
-        for fn in cls.PLATFORM_OPT_ADDON_FILES:
+        for fn in cls.PLATFORM_OPTIONAL_ADDON_FILES:
             fullfn = os.path.join(platDirSrc, fn)
             if os.path.exists(fullfn):
                 __copy(fullfn, platDirDst)
@@ -267,7 +267,7 @@ class Grub:
             __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
 
         # check optional files
-        for fn in cls.PLATFORM_OPT_ADDON_FILES:
+        for fn in cls.PLATFORM_OPTIONAL_ADDON_FILES:
             fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
             if os.path.exists(fullfn):
                 __check(fullfn, fullfn2)
