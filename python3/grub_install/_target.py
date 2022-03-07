@@ -329,7 +329,7 @@ class _Common:
 
         # install module files
         # FIXME: install only required modules
-        Grub.copyPlatformFiles(platform_type, source, grubDir)
+        Grub.copyPlatformModuleFiles(platform_type, source, grubDir)
 
         # generate load.cfg for core.img
         buf = ""
