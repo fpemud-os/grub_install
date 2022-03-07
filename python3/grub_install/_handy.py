@@ -237,7 +237,7 @@ class Grub:
                 __copy(fullfn, platDirDst)
 
     @classmethod
-    def checkPlatformFiles(cls, platform_type, source, grub_dir):
+    def checkPlatformFilesAndReturnRedundants(cls, platform_type, source, grub_dir):
         # get and check source directory
         platDirSrc = source.try_get_platform_directory(platform_type)
         if platDirSrc is None:
@@ -272,10 +272,9 @@ class Grub:
             if os.path.exists(fullfn):
                 __check(fullfn, fullfn2)
 
-        # redundant files
+        # return redundant files
         ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
-        if len(ret) > 0:
-            raise CheckError("redundant files %s found" % (", ".join(ret)))
+        return [os.path.basename(ret) for x in ret]
 
     @staticmethod
     def copyLocaleFiles(source, grub_dir, locales):

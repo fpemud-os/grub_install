@@ -367,7 +367,7 @@ class _Common:
     @staticmethod
     def check_with_source(p, platform_type, source, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
-        Grub.checkPlatformFiles(platform_type, source, grubDir)
+        Grub.checkPlatformFilesAndReturnRedundants(platform_type, source, grubDir)
 
 
         # FIXME
