@@ -114,8 +114,7 @@ class Source:
         assert self.supports(self.CAP_FONTS)
         ret = dict()
         for fullfn in glob.glob(os.path.join(self._shareDir, "*.pf2")):
-            n = os.path.basename(fullfn)
-            n = n.replace(".pf2", "")
+            n = os.path.basename(fullfn).replace(".pf2", "")
             ret[n] = fullfn
         return ret
 
