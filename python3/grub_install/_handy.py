@@ -212,10 +212,11 @@ class Grub:
         os.rename(tmpName, name)
 
     @classmethod
-    def copyPlatformFiles(cls, platform_type, source, grub_dir):
+    def copyPlatformModuleFiles(cls, platform_type, source, grub_dir):
         platDirSrc = source.get_platform_directory(platform_type)
-        platDirDst = os.path.join(grub_dir, platform_type.value)
+        assert os.path.isdir(platDirSrc)
 
+        platDirDst = os.path.join(grub_dir, platform_type.value)
         force_mkdir(platDirDst, clear=True)
 
         def __copy(fullfn, dstDir):
@@ -237,11 +238,10 @@ class Grub:
                 __copy(fullfn, platDirDst)
 
     @classmethod
-    def checkPlatformFilesAndReturnRedundants(cls, platform_type, source, grub_dir):
+    def checkPlatformModuleFilesAndReturnRedundants(cls, platform_type, source, grub_dir):
         # get and check source directory
         platDirSrc = source.try_get_platform_directory(platform_type)
-        if platDirSrc is None:
-            raise CheckError("%s does not exist" % (platDirSrc))
+        assert os.path.isdir(platDirSrc)
 
         # get and check destination directory
         platDirDst = os.path.join(grub_dir, platform_type.value)
@@ -290,14 +290,11 @@ class Grub:
             for x in locales:
                 shutil.copy(source.get_locale_file(x), "%s.mo" % (x))
 
-    @staticmethod
-    def checkLocaleFiles(source, grub_dir):
-        dstDir = os.path.join(grub_dir, "locales")
-        if os.path.exists(dstDir):
-            if not source.supports(source.CAP_NLS):
-                raise CheckError("nls is not supported")
-            for fullfn2 in glob.glob(os.path.join(dstDir, "locales", "**", "*.mo")):
-                ln = rel_path(dstDir, fullfn2).split("/")[1]
+    @classmethod
+    def checkLocaleFilesAndReturnRedundants(cls, source, grub_dir):
+        assert source.supports(source.CAP_NLS)
+
+        for fullfn in glob.glob(os.path.join(grub_dir, "locale", "*.mo")):
 
 
 

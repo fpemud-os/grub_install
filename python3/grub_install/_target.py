@@ -353,21 +353,9 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check(p, platform_type, auto_fix):
-        grubDir = os.path.join(p._bootDir, "grub")
-        if os.path.isdir(grubDir):
-            pset = set([x.value for x in p._platforms])
-            fset = set(os.listdir(grubDir)) - set(["locale", "fonts", "themes"])
-            # FIXME: check every platform
-            # FIXME: check redundant files
-        else:
-            if len(p._platforms) > 0:
-                raise Exception("")     # FIXME
-
-    @staticmethod
     def check_with_source(p, platform_type, source, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
-        Grub.checkPlatformFilesAndReturnRedundants(platform_type, source, grubDir)
+        ret = Grub.checkPlatformModuleFilesAndReturnRedundants(platform_type, source, grubDir)
 
 
         # FIXME
