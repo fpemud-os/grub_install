@@ -155,9 +155,9 @@ class Grub:
     # Offset of field holding no reed solomon length.
     KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH = 0x14
 
-    OTHER_FILES = ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]
+    PLATFORM_ADDON_FILES = ["moddep.lst", "command.lst", "fs.lst", "partmap.lst", "parttool.lst", "video.lst", "crypto.lst", "terminal.lst", "modinfo.sh"]
 
-    OPTIONAL_FILES = ["efiemu32.o", "efiemu64.o"]
+    PLATFORM_OPT_ADDON_FILES = ["efiemu32.o", "efiemu64.o"]
 
     @staticmethod
     def getCoreImgNameAndTarget(platform_type):
@@ -227,11 +227,11 @@ class Grub:
             __copy(fullfn, platDirDst)
 
         # copy other files
-        for fn in cls.OTHER_FILES:
+        for fn in cls.PLATFORM_ADDON_FILES:
             __copy(os.path.join(platDirSrc, fn), platDirDst)
 
         # copy optional files
-        for fn in cls.OPTIONAL_FILES:
+        for fn in cls.PLATFORM_OPT_ADDON_FILES:
             fullfn = os.path.join(platDirSrc, fn)
             if os.path.exists(fullfn):
                 __copy(fullfn, platDirDst)
@@ -263,11 +263,11 @@ class Grub:
             __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
 
         # check other files
-        for fn in cls.OTHER_FILES:
+        for fn in cls.PLATFORM_ADDON_FILES:
             __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
 
         # check optional files
-        for fn in cls.OPTIONAL_FILES:
+        for fn in cls.PLATFORM_OPT_ADDON_FILES:
             fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
             if os.path.exists(fullfn):
                 __check(fullfn, fullfn2)
