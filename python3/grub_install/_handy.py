@@ -247,20 +247,6 @@ class Grub:
         return [os.path.basename(ret) for x in ret]
 
     @staticmethod
-    def copyLocaleFiles(source, grub_dir, locales):
-        assert source.supports(source.CAP_NLS)
-
-        dstDir = os.path.join(grub_dir, "locales")
-        force_mkdir(dstDir, clear=True)
-
-        if locales == "*":
-            for lname, fullfn in source.get_all_locale_files().items():
-                shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (lname)))
-        else:
-            for lname in locales:
-                shutil.copy(source.get_locale_file(lname), "%s.mo" % (lname))
-
-    @staticmethod
     def checkLocaleFilesAndRedundants(source, grub_dir):
         assert source.supports(source.CAP_NLS)
 
@@ -282,20 +268,6 @@ class Grub:
         return ret
 
     @staticmethod
-    def copyFontFiles(source, grub_dir, fonts):
-        assert source.supports(source.CAP_FONTS)
-
-        dstDir = os.path.join(grub_dir, "fonts")
-        force_mkdir(dstDir, clear=True)
-
-        if fonts == "*":
-            for fname, fullfn in source.get_all_font_files().items():
-                shutil.copy(fullfn, dstDir)
-        else:
-            for fname in fonts:
-                shutil.copy(source.get_font_file(fname), dstDir)
-
-    @staticmethod
     def checkFontFilesAndRedundants(source, grub_dir):
         assert source.supports(source.CAP_FONTS)
 
@@ -313,20 +285,6 @@ class Grub:
                 continue
             ret.append(fullfn2)
         return ret
-
-    @staticmethod
-    def copyThemeFiles(source, grub_dir, themes):
-        assert source.supports(source.CAP_THEMES)
-
-        dstDir = os.path.join(grub_dir, "themes")
-        force_mkdir(dstDir, clear=True)
-
-        if themes == "*":
-            for tname, fullfn in source.get_all_theme_directories():
-                shutil.copytree(fullfn, dstDir)
-        else:
-            for tname in themes:
-                shutil.copytree(source.get_theme_directory(tname), dstDir)
 
     @staticmethod
     def checkThemeFilesAndRedundants(source, grub_dir):

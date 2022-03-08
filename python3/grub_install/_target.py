@@ -207,16 +207,45 @@ class Target(abc.ABC):
 
     def install_data(self, source, locales=None, fonts=None, themes=None):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
+        if locales is not None:
+            assert source.supports(source.CAP_NLS)
+        if fonts is not None:
+            assert source.supports(source.CAP_FONTS)
+        if themes is not None:
+            assert source.supports(source.CAP_THEMES)
 
         grubDir = os.path.join(self._bootDir, "grub")
         force_mkdir(grubDir)
 
         if locales is not None:
-            Grub.copyLocaleFiles(source, grubDir, locales)
+            dstDir = os.path.join(grubDir, "locales")
+            force_mkdir(dstDir, clear=True)
+            if locales == "*":
+                for lname, fullfn in source.get_all_locale_files().items():
+                    shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (lname)))
+            else:
+                for lname in locales:
+                    shutil.copy(source.get_locale_file(lname), "%s.mo" % (lname))
+
         if fonts is not None:
-            Grub.copyFontFiles(source, grubDir, fonts)
+            dstDir = os.path.join(grubDir, "fonts")
+            force_mkdir(dstDir, clear=True)
+            if fonts == "*":
+                for fname, fullfn in source.get_all_font_files().items():
+                    shutil.copy(fullfn, dstDir)
+            else:
+                for fname in fonts:
+                    shutil.copy(source.get_font_file(fname), dstDir)
+
         if themes is not None:
-            Grub.copyThemeFiles(source, grubDir, themes)
+            dstDir = os.path.join(grubDir, "themes")
+            force_mkdir(dstDir, clear=True)
+            if themes == "*":
+                for tname, fullfn in source.get_all_theme_directories():
+                    shutil.copytree(fullfn, dstDir)
+            else:
+                for tname in themes:
+                    shutil.copytree(source.get_theme_directory(tname), dstDir)
 
     def remove_data(self):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
