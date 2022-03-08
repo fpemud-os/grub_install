@@ -160,6 +160,8 @@ class Grub:
 
     @staticmethod
     def getModuleListAndHnits(platform_type, mnt):
+        moduleList = []
+
         # disk module
         if platform_type == PlatformType.I386_PC:
             disk_module = "biosdisk"
