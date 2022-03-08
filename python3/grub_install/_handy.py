@@ -238,17 +238,13 @@ class Grub:
                 __copy(fullfn, platDirDst)
 
     @classmethod
-    def checkPlatformModuleFilesAndReturnRedundants(cls, platform_type, source, grub_dir):
-        # get and check source directory
-        platDirSrc = source.try_get_platform_directory(platform_type)
-        assert os.path.isdir(platDirSrc)
-
-        # get and check destination directory
+    def checkPlatformModuleFilesAndRedundants(cls, platform_type, source, grub_dir):
+        platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(grub_dir, platform_type.value)
+        fileSet = set()
+
         if not os.path.exists(platDirDst):
             raise CheckError("%s does not exist" % (platDirDst))
-
-        fileSet = set()
 
         def __check(fullfn, fullfn2):
             # FIXME: check owner, group, mode?
@@ -262,11 +258,11 @@ class Grub:
         for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
             __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
 
-        # check other files
+        # check addon files
         for fn in cls.PLATFORM_ADDON_FILES:
             __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
 
-        # check optional files
+        # check optional addon files
         for fn in cls.PLATFORM_OPTIONAL_ADDON_FILES:
             fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
             if os.path.exists(fullfn):
@@ -284,19 +280,32 @@ class Grub:
         force_mkdir(dstDir, clear=True)
 
         if locales == "*":
-            for ln, fullfn in source.get_all_locale_files():
-                shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (ln)))
+            for lname, fullfn in source.get_all_locale_files().items():
+                shutil.copy(fullfn, os.path.join(dstDir, "%s.mo" % (lname)))
         else:
-            for x in locales:
-                shutil.copy(source.get_locale_file(x), "%s.mo" % (x))
+            for lname in locales:
+                shutil.copy(source.get_locale_file(lname), "%s.mo" % (lname))
 
-    @classmethod
-    def checkLocaleFilesAndReturnRedundants(cls, source, grub_dir):
+    @staticmethod
+    def checkLocaleFilesAndRedundants(source, grub_dir):
         assert source.supports(source.CAP_NLS)
 
-        for fullfn in glob.glob(os.path.join(grub_dir, "locale", "*.mo")):
+        dstDir = os.path.join(os.path.join(grub_dir, "locales")
+        if not os.path.exists(dstDir):
+            raise CheckError("%s does not exist" % (dstDir))
 
-
+        ret = []
+        for fn2 in os.listdir(dstDir):
+            fullfn2 = os.path.join(dstDir, fn2)
+            if fn2.endswith(".mo"):
+                lname = fn2.replace(".mo", "")
+                fullfn = source.try_get_locale_file(lname)
+                if fullfn is not None:
+                    if not compare_files(fullfn, fullfn2):
+                        raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                    continue
+            ret.append(fullfn2)
+        return ret
 
     @staticmethod
     def copyFontFiles(source, grub_dir, fonts):
@@ -306,11 +315,30 @@ class Grub:
         force_mkdir(dstDir, clear=True)
 
         if fonts == "*":
-            for fn, fullfn in source.get_all_font_files():
+            for fname, fullfn in source.get_all_font_files().items():
                 shutil.copy(fullfn, dstDir)
         else:
-            for x in fonts:
-                shutil.copy(source.get_font_file(x), dstDir)
+            for fname in fonts:
+                shutil.copy(source.get_font_file(fname), dstDir)
+
+    @staticmethod
+    def checkFontFilesAndRedundants(source, grub_dir):
+        assert source.supports(source.CAP_FONTS)
+
+        dstDir = os.path.join(os.path.join(grub_dir, "fonts")
+        if not os.path.exists(dstDir):
+            raise CheckError("%s does not exist" % (dstDir))
+
+        ret = []
+        for fullfn2 in glob.glob(dstDir, "*.pf2"):
+            fname = os.path.basename(fullfn2).replace(".pf2", "")
+            fullfn = source.try_get_font_file(fname)
+            if fullfn is not None:
+                if not compare_files(fullfn, fullfn2):
+                    raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                continue
+            ret.append(fullfn2)
+        return ret
 
     @staticmethod
     def copyThemeFiles(source, grub_dir, themes):
@@ -320,11 +348,31 @@ class Grub:
         force_mkdir(dstDir, clear=True)
 
         if themes == "*":
-            for tn, fullfn in source.get_all_theme_directories():
+            for tname, fullfn in source.get_all_theme_directories():
                 shutil.copytree(fullfn, dstDir)
         else:
-            for x in themes:
-                shutil.copytree(source.get_theme_directory(x), dstDir)
+            for tname in themes:
+                shutil.copytree(source.get_theme_directory(tname), dstDir)
+
+    @staticmethod
+    def checkThemeFilesAndRedundants(source, grub_dir):
+        assert source.supports(source.CAP_THEMES)
+
+        dstDir = os.path.join(os.path.join(grub_dir, "themes")
+        if not os.path.exists(dstDir):
+            raise CheckError("%s does not exist" % (dstDir))
+
+        ret = []
+        for tname in os.listdir(dstDir):
+            fullfn2 = os.path.join(dstDir, tname)
+            if os.path.isdir(fullfn2):
+                fullfn = source.try_get_theme_directory(lname)
+                if fullfn is not None:
+                    if not compare_directories(fullfn, fullfn2):
+                        raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                    continue
+            ret.append(fullfn2)
+        return ret
 
     @staticmethod
     def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path, tmp_dir=None):

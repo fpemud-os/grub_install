@@ -90,9 +90,7 @@ class Source:
         assert self.supports(self.CAP_NLS)
         ret = dict()
         for fullfn in glob.glob(os.path.join(self._localeDir, "**/LC_MESSAGES/grub.mo")):
-            n = fullfn.replace(self._localeDir, "")
-            n = n[1:]
-            n = n.split("/")[0]
+            n = rel_path(self._localeDir, fullfn).split("/")[0]
             ret[n] = fullfn
         return ret
 

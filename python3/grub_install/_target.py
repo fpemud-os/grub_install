@@ -254,14 +254,17 @@ class Target(abc.ABC):
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                _Common.check_with_source(self, pt, source, auto_fix)
+                _Common.check_platform(self, pt, source, auto_fix)
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                _Common.check_with_source(self, pt, source, auto_fix)
+                _Common.check_platform(self, pt, source, auto_fix)
             else:
                 assert False
+
+        _Common.check_data(self, source, auto_fix)
+
 
 
 class _Common:
@@ -353,13 +356,24 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check_with_source(p, platform_type, source, auto_fix):
+    def check_platform(p, platform_type, source, auto_fix):
         grubDir = os.path.join(p._bootDir, "grub")
-        ret = Grub.checkPlatformModuleFilesAndReturnRedundants(platform_type, source, grubDir)
+        ret = Grub.checkPlatformModuleFilesAndRedundants(platform_type, source, grubDir)
+        if len(ret) > 0:
+            raise CheckError("redundant file(s) %s found" % (", ".join(ret)))
+
+    @staticmethod
+    def check_data(p, platform_type, source, auto_fix):
+        grubDir = os.path.join(p._bootDir, "grub")
+        ret = []
+        if 
+        ret += Grub.checkLocaleFilesAndRedundants(source, grubDir)
+        ret += Grub.checkFontFilesAndRedundants(source, grubDir)
+        ret += Grub.checkThemeFilesAndRedundants(source, grubDir)
+        if len(ret) > 0:
+            raise CheckError("redundant file(s) %s found" % (", ".join(ret)))
 
 
-        # FIXME
-        pass
 
 
 class _Bios:
