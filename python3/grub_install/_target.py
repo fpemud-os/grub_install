@@ -142,6 +142,7 @@ class Target(abc.ABC):
                     _Bios.install_into_mbr(platform_type, ret, source, self._bootDir, self._dev,
                                            False,                                               # bFloppyOrHdd
                                            kwargs.get("allow_floppy", False),                   # bAllowFloppy
+                                           kwargs.get("bpb", True),                             # bBpb
                                            kwargs.get("rs_codes", True))                        # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
@@ -387,7 +388,8 @@ class _Bios:
         if dev is None:
             platform_install_info.mbr_installed = False
             platform_install_info.allow_floppy = True
-            platform_install_info.rs_codes = False
+            platform_install_info.bpb = True
+            platform_install_info.rs_codes = True
             return
 
         # read MBR and MBR-gap
@@ -401,14 +403,19 @@ class _Bios:
         if tmpBootBuf == cls._getAllZeroBootBuf(tmpBootBuf) and is_buffer_all_zero(tmpCoreBuf) and is_buffer_all_zero(tmpRestBuf):
             platform_install_info.mbr_installed = False
             platform_install_info.allow_floppy = True
-            platform_install_info.rs_codes = False
+            platform_install_info.bpb = True
+            platform_install_info.rs_codes = True
             return
 
         # prepare bootBuf
         if True:
             # see comment in cls.install_into_mbr()
             s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
-            bootBuf[s:e] = tmpBootBuf[s:e]
+            if not is_buffer_all_zero(tmpBootBuf[s:e]):
+                bootBuf[s:e] = tmpBootBuf[s:e]
+                bBpb = True
+            else:
+                bBpb = False
 
             # see comment in cls.install_into_mbr()
             s, e = Grub.BOOT_MACHINE_DRIVE_CHECK, Grub.BOOT_MACHINE_DRIVE_CHECK + 2
@@ -433,6 +440,7 @@ class _Bios:
         # return
         platform_install_info.mbr_installed = True
         platform_install_info.allow_floppy = bAllowFloppy
+        platform_install_info.bpb = bBpb
         platform_install_info.rs_codes = False
         return
 
@@ -443,10 +451,11 @@ class _Bios:
         # fill custom attributes
         platform_install_info.mbr_installed = False
         platform_install_info.allow_floppy = True
+        platform_install_info.bpb = True
         platform_install_info.rs_codes = False
 
     @classmethod
-    def install_into_mbr(cls, platform_type, platform_install_info, bootDir, dev, bFloppyOrHdd, bAllowFloppy, bAddRsCodes):
+    def install_into_mbr(cls, platform_type, platform_install_info, bootDir, dev, bFloppyOrHdd, bAllowFloppy, bBpb, bAddRsCodes):
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
 
         bootBuf = bytearray(cls._checkAndReadBootImg(platform_type, bootDir, InstallError))     # bootBuf needs to be writable
@@ -459,8 +468,9 @@ class _Bios:
             # prepare bootBuf
             if True:
                 # Copy the possible DOS BPB.
-                s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
-                bootBuf[s:e] = tmpBootBuf[s:e]
+                if bBpb:
+                    s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
+                    bootBuf[s:e] = tmpBootBuf[s:e]
 
                 # If DEST_DRIVE is a hard disk, enable the workaround, which is
                 # for buggy BIOSes which don't pass boot drive correctly. Instead,
@@ -488,6 +498,7 @@ class _Bios:
         # fill custom attributes
         platform_install_info.mbr_installed = True
         platform_install_info.allow_floppy = bAllowFloppy
+        platform_install_info.bpb = bBpb
         platform_install_info.rs_codes = bAddRsCodes
 
     @classmethod
