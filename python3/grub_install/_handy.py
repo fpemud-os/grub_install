@@ -22,9 +22,8 @@
 
 
 import os
-import glob
-import shutil
 import psutil
+import pathlib
 import tempfile
 import subprocess
 from ._util import rel_path, force_mkdir, compare_files
@@ -160,6 +159,48 @@ class Grub:
     PLATFORM_OPTIONAL_ADDON_FILES = ["efiemu32.o", "efiemu64.o"]
 
     @staticmethod
+    def getModuleListAndHnits(platform_type, mnt):
+        # disk module
+        if platform_type == PlatformType.I386_PC:
+            disk_module = "biosdisk"
+            hints = mnt.bios_hints
+        elif platform_type == PlatformType.I386_MULTIBOOT:
+            disk_module = "native"
+            hints = ""
+        elif Handy.isPlatformEfi(platform_type):
+            disk_module = None
+            hints = mnt.efi_hints
+        elif Handy.isPlatformCoreboot(platform_type):
+            disk_module = "native"
+            hints = ""
+        elif Handy.isPlatformQemu(platform_type):
+            disk_module = "native"
+            hints = ""
+        elif platform_type == PlatformType.MIPSEL_LOONGSON:
+            disk_module = "native"
+            hints = ""
+        else:
+            disk_module = None
+            hints = ""
+
+        if disk_module is None:
+            pass
+        elif disk_module == "biosdisk":
+            moduleList.append("biosdisk")
+        elif disk_module == "native":
+            moduleList += ["pata"]                              # for IDE harddisk
+            moduleList += ["ahci"]                              # for SCSI harddisk
+            moduleList += ["ohci", "uhci", "ehci", "ubms"]      # for USB harddisk
+        else:
+            assert False
+
+        # fs module
+        moduleList.append(mnt.fs)
+        moduleList.append("search_fs_uuid")
+
+        return (moduleList, hints)
+
+    @staticmethod
     def getCoreImgNameAndTarget(platform_type):
         if platform_type == PlatformType.I386_PC:
             core_name = "core.img"
@@ -212,12 +253,14 @@ class Grub:
         os.rename(tmpName, name)
 
     @staticmethod
-    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path, tmp_dir=None):
+    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, tmp_dir=None):
         with tempfile.TemporaryDirectory(dir=tmp_dir) as tmpdir:
             loadCfgFile = os.path.join(tmpdir, "load.cfg")
+            coreImgFile = os.pat.join(tmpdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(load_cfg_file_content)
-            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", out_path] + module_list)
+            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
+            return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
     def probeMnt(dir):

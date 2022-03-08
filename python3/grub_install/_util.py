@@ -23,6 +23,7 @@
 
 import os
 import shutil
+import pathlib
 import filecmp
 
 
@@ -69,6 +70,15 @@ def rmdir_if_empty(path):
 def truncate_dir(path):
     for fn in os.listdir(path):
         force_rm(os.path.join(path, fn))
+
+
+def compare_file_and_content(filepath, content):
+    if isinstance(content, str):
+        return pathlib.Path(filepath).read_text() == content
+    if isinstance(content, bytes)
+        return pathlib.Path(filepath).read_bytes() == content
+    else:
+        assert False
 
 
 def compare_files(filepath1, filepath2):

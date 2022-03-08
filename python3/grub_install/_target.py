@@ -28,7 +28,7 @@ import glob
 import shutil
 import parted
 import pathlib
-from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_files, compare_directories, is_buffer_all_zero
+from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._errors import TargetError, InstallError, CheckError
 from ._handy import Handy, Grub
@@ -285,12 +285,12 @@ class Target(abc.ABC):
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                _Common.check_platform(self, pt, source, auto_fix)
+                ret = _Common.check_platform(self, pt, source, auto_fix)
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                _Common.check_platform(self, pt, source, auto_fix)
+                ret = _Common.check_platform(self, pt, source, auto_fix)
             else:
                 assert False
 
@@ -314,63 +314,28 @@ class _Common:
 
     @staticmethod
     def install_platform(p, platform_type, source, tmpDir=None, debugImage=None):
+        grubDir = os.path.join(p._bootDir, "grub")
+
         mnt = Grub.probeMnt(p._bootDir)
         if mnt.fs_uuid is None:
             raise InstallError("no fsuuid found")
         if Handy.isPlatformEfi(platform_type) and (mnt.mnt_dir != p._bootDir or mnt.fs != "fat"):
             raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
-        platDirSrc = source.get_platform_directory(platform_type)
-        grubDir = os.path.join(p._bootDir, "grub")
-        platDirDst = os.path.join(grubDir, platform_type.value)
-        moduleList = []
-
-        # disk module
-        if platform_type == PlatformType.I386_PC:
-            disk_module = "biosdisk"
-            hints = mnt.bios_hints
-        elif platform_type == PlatformType.I386_MULTIBOOT:
-            disk_module = "native"
-            hints = ""
-        elif Handy.isPlatformEfi(platform_type):
-            disk_module = None
-            hints = mnt.efi_hints
-        elif Handy.isPlatformCoreboot(platform_type):
-            disk_module = "native"
-            hints = ""
-        elif Handy.isPlatformQemu(platform_type):
-            disk_module = "native"
-            hints = ""
-        elif platform_type == PlatformType.MIPSEL_LOONGSON:
-            disk_module = "native"
-            hints = ""
-        else:
-            disk_module = None
-            hints = ""
-
-        if disk_module is None:
-            pass
-        elif disk_module == "biosdisk":
-            moduleList.append("biosdisk")
-        elif disk_module == "native":
-            moduleList += ["pata"]                              # for IDE harddisk
-            moduleList += ["ahci"]                              # for SCSI harddisk
-            moduleList += ["ohci", "uhci", "ehci", "ubms"]      # for USB harddisk
-        else:
-            assert False
-
-        # fs module
-        moduleList.append(mnt.fs)
-        moduleList.append("search_fs_uuid")
+        # get module list and hints
+        moduleList, hints = Grub.getModuleListAndHnits(platform_type, mnt)
 
         # install module files
         # FIXME: install only required modules
         if True:
+            platDirSrc = source.get_platform_directory(platform_type)
+            platDirDst = os.path.join(grubDir, platform_type.value)
+
+            force_mkdir(platDirDst, clear=True)
+
             def __copy(fullfn, dstDir):
                 # FIXME: specify owner, group, mode?
                 shutil.copy(fullfn, platDirDst)
-
-            force_mkdir(platDirDst, clear=True)
 
             # copy module files
             for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
@@ -396,7 +361,9 @@ class _Common:
         # make core.img
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
         coreImgPath = os.path.join(grubDir, platform_type.value, coreName)
-        Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, coreImgPath, tmp_dir=tmpDir)
+        coreBuf = Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, tmp_dir=tmpDir)
+        with open(coreImgPath, "Wb") as f:
+            f.write(coreBuf)
 
     @staticmethod
     def remove_platform(p, platform_type):
@@ -437,10 +404,22 @@ class _Common:
             if os.path.exists(fullfn):
                 __check(fullfn, fullfn2)
 
+        # check core image file
+        coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
+        coreImgPath = os.path.join(platDirDst, coreName)
+        coreBuf = Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, tmp_dir=tmpDir)
+
+
+        if not compare_file_and_content(coreImgPath, coreBuf):
+
+
+
+        with open(coreImgPath, "Wb") as f:
+            f.write(coreBuf)
+
+
         # return redundant files
-        ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
-        if len(ret) > 0:
-            raise CheckError("redundant file(s) %s found" % (", ".join(ret)))
+        return list(set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet)
 
     @staticmethod
     def check_data(p, source, auto_fix):
