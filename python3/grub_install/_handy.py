@@ -247,66 +247,6 @@ class Grub:
         return [os.path.basename(ret) for x in ret]
 
     @staticmethod
-    def checkLocaleFilesAndRedundants(source, grub_dir):
-        assert source.supports(source.CAP_NLS)
-
-        dstDir = os.path.join(os.path.join(grub_dir, "locales")
-        if not os.path.exists(dstDir):
-            raise CheckError("%s does not exist" % (dstDir))
-
-        ret = []
-        for fn2 in os.listdir(dstDir):
-            fullfn2 = os.path.join(dstDir, fn2)
-            if fn2.endswith(".mo"):
-                lname = fn2.replace(".mo", "")
-                fullfn = source.try_get_locale_file(lname)
-                if fullfn is not None:
-                    if not compare_files(fullfn, fullfn2):
-                        raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-                    continue
-            ret.append(fullfn2)
-        return ret
-
-    @staticmethod
-    def checkFontFilesAndRedundants(source, grub_dir):
-        assert source.supports(source.CAP_FONTS)
-
-        dstDir = os.path.join(os.path.join(grub_dir, "fonts")
-        if not os.path.exists(dstDir):
-            raise CheckError("%s does not exist" % (dstDir))
-
-        ret = []
-        for fullfn2 in glob.glob(dstDir, "*.pf2"):
-            fname = os.path.basename(fullfn2).replace(".pf2", "")
-            fullfn = source.try_get_font_file(fname)
-            if fullfn is not None:
-                if not compare_files(fullfn, fullfn2):
-                    raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-                continue
-            ret.append(fullfn2)
-        return ret
-
-    @staticmethod
-    def checkThemeFilesAndRedundants(source, grub_dir):
-        assert source.supports(source.CAP_THEMES)
-
-        dstDir = os.path.join(os.path.join(grub_dir, "themes")
-        if not os.path.exists(dstDir):
-            raise CheckError("%s does not exist" % (dstDir))
-
-        ret = []
-        for tname in os.listdir(dstDir):
-            fullfn2 = os.path.join(dstDir, tname)
-            if os.path.isdir(fullfn2):
-                fullfn = source.try_get_theme_directory(lname)
-                if fullfn is not None:
-                    if not compare_directories(fullfn, fullfn2):
-                        raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-                    continue
-            ret.append(fullfn2)
-        return ret
-
-    @staticmethod
     def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path, tmp_dir=None):
         with tempfile.TemporaryDirectory(dir=tmp_dir) as tmpdir:
             loadCfgFile = os.path.join(tmpdir, "load.cfg")
