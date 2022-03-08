@@ -409,8 +409,36 @@ class _Common:
 
     @staticmethod
     def check_platform(p, platform_type, source, auto_fix):
-        grubDir = os.path.join(p._bootDir, "grub")
-        ret = Grub.checkPlatformModuleFilesAndRedundants(platform_type, source, grubDir)
+        platDirSrc = source.get_platform_directory(platform_type)
+        platDirDst = os.path.join(p._bootDir, "grub", platform_type.value)
+        assert os.path.exists(platDirDst)
+
+        fileSet = set()
+
+        def __check(fullfn, fullfn2):
+            # FIXME: check owner, group, mode?
+            if not os.path.exists(fullfn2):
+                raise CheckError("%s does not exist" % (fullfn2))
+            if not compare_files(fullfn, fullfn2):
+                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+            fileSet.add(fullfn2)
+
+        # check module files
+        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+            __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
+
+        # check addon files
+        for fn in Grub.PLATFORM_ADDON_FILES:
+            __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
+
+        # check optional addon files
+        for fn in Grub.PLATFORM_OPTIONAL_ADDON_FILES:
+            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
+            if os.path.exists(fullfn):
+                __check(fullfn, fullfn2)
+
+        # return redundant files
+        ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
         if len(ret) > 0:
             raise CheckError("redundant file(s) %s found" % (", ".join(ret)))
 
