@@ -212,32 +212,6 @@ class Grub:
         os.rename(tmpName, name)
 
     @classmethod
-    def copyPlatformModuleFiles(cls, platform_type, source, grub_dir):
-        platDirSrc = source.get_platform_directory(platform_type)
-        assert os.path.isdir(platDirSrc)
-
-        platDirDst = os.path.join(grub_dir, platform_type.value)
-        force_mkdir(platDirDst, clear=True)
-
-        def __copy(fullfn, dstDir):
-            # FIXME: specify owner, group, mode?
-            shutil.copy(fullfn, platDirDst)
-
-        # copy module files
-        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            __copy(fullfn, platDirDst)
-
-        # copy other files
-        for fn in cls.PLATFORM_ADDON_FILES:
-            __copy(os.path.join(platDirSrc, fn), platDirDst)
-
-        # copy optional files
-        for fn in cls.PLATFORM_OPTIONAL_ADDON_FILES:
-            fullfn = os.path.join(platDirSrc, fn)
-            if os.path.exists(fullfn):
-                __copy(fullfn, platDirDst)
-
-    @classmethod
     def checkPlatformModuleFilesAndRedundants(cls, platform_type, source, grub_dir):
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(grub_dir, platform_type.value)

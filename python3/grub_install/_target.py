@@ -24,6 +24,7 @@
 import os
 import re
 import abc
+import glob
 import shutil
 import parted
 import pathlib
@@ -290,7 +291,9 @@ class _Common:
         if Handy.isPlatformEfi(platform_type) and (mnt.mnt_dir != p._bootDir or mnt.fs != "fat"):
             raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
+        platDirSrc = source.get_platform_directory(platform_type)
         grubDir = os.path.join(p._bootDir, "grub")
+        platDirDst = os.path.join(grubDir, platform_type.value)
         moduleList = []
 
         # disk module
@@ -333,7 +336,26 @@ class _Common:
 
         # install module files
         # FIXME: install only required modules
-        Grub.copyPlatformModuleFiles(platform_type, source, grubDir)
+        if True:
+            def __copy(fullfn, dstDir):
+                # FIXME: specify owner, group, mode?
+                shutil.copy(fullfn, platDirDst)
+
+            force_mkdir(platDirDst, clear=True)
+
+            # copy module files
+            for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+                __copy(fullfn, platDirDst)
+
+            # copy other files
+            for fn in Grub.PLATFORM_ADDON_FILES:
+                __copy(os.path.join(platDirSrc, fn), platDirDst)
+
+            # copy optional files
+            for fn in Grub.PLATFORM_OPTIONAL_ADDON_FILES:
+                fullfn = os.path.join(platDirSrc, fn)
+                if os.path.exists(fullfn):
+                    __copy(fullfn, platDirDst)
 
         # generate load.cfg for core.img
         buf = ""
