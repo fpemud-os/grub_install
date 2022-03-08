@@ -211,41 +211,6 @@ class Grub:
 
         os.rename(tmpName, name)
 
-    @classmethod
-    def checkPlatformModuleFilesAndRedundants(cls, platform_type, source, grub_dir):
-        platDirSrc = source.get_platform_directory(platform_type)
-        platDirDst = os.path.join(grub_dir, platform_type.value)
-        fileSet = set()
-
-        if not os.path.exists(platDirDst):
-            raise CheckError("%s does not exist" % (platDirDst))
-
-        def __check(fullfn, fullfn2):
-            # FIXME: check owner, group, mode?
-            if not os.path.exists(fullfn2):
-                raise CheckError("%s does not exist" % (fullfn2))
-            if not compare_files(fullfn, fullfn2):
-                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-            fileSet.add(fullfn2)
-
-        # check module files
-        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
-
-        # check addon files
-        for fn in cls.PLATFORM_ADDON_FILES:
-            __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
-
-        # check optional addon files
-        for fn in cls.PLATFORM_OPTIONAL_ADDON_FILES:
-            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
-            if os.path.exists(fullfn):
-                __check(fullfn, fullfn2)
-
-        # return redundant files
-        ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
-        return [os.path.basename(ret) for x in ret]
-
     @staticmethod
     def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, out_path, tmp_dir=None):
         with tempfile.TemporaryDirectory(dir=tmp_dir) as tmpdir:
