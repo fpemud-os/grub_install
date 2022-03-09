@@ -35,7 +35,7 @@ from ._handy import Handy, Grub
 from ._source import Source
 
 
-class Target(abc.ABC):
+class Target:
 
     def __init__(self, target_type, target_access_mode, **kwargs):
         assert isinstance(target_type, TargetType)
