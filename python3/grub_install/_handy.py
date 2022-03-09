@@ -264,7 +264,7 @@ class Grub:
 
         with tempfile.TemporaryDirectory(dir=tmpDir) as tdir:
             loadCfgFile = os.path.join(tdir, "load.cfg")
-            coreImgFile = os.pat.join(tdir, "core.img")
+            coreImgFile = os.path.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(buf)
             subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
