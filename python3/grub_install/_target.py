@@ -432,7 +432,7 @@ class _Common:
         localeDir = os.path.join(p._bootDir, "grub", "locale")
         if os.path.exists(localeDir):
             if not source.supports(source.CAP_NLS):
-                raise CheckError("nls is not supported")
+                raise CheckError("NLS is not supported")
             for fn2 in os.listdir(localeDir):
                 fullfn2 = os.path.join(localeDir, fn2)
                 if fn2.endswith(".mo"):
