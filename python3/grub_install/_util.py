@@ -75,7 +75,7 @@ def truncate_dir(path):
 def compare_file_and_content(filepath, content):
     if isinstance(content, str):
         return pathlib.Path(filepath).read_text() == content
-    if isinstance(content, bytes)
+    if isinstance(content, bytes):
         return pathlib.Path(filepath).read_bytes() == content
     else:
         assert False

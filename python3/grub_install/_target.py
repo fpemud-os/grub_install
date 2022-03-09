@@ -42,6 +42,7 @@ class Target:
 
         self._targetType = target_type
         self._mode = target_access_mode
+        self._tmpDir = kwargs.get("my_tmp_dir", None)
 
         # target specific variables
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -50,6 +51,10 @@ class Target:
                 self._bootDir = kwargs["boot_dir"]
             else:
                 self._bootDir = os.path.join(self._rootfsDir, "boot")
+            if self._rootfsDir is not None:
+                self._mnt = Grub.probeMnt(self._rootfsDir)
+            else:
+                self._mnt = Grub.probeMnt(self._bootDir)
             self._dev = kwargs["dev"]
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
@@ -134,7 +139,7 @@ class Target:
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source,
-                                     tmpDir=kwargs.get("tmp_dir", None),
+                                     tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_boot_img(platform_type, ret, source, self._bootDir)
@@ -155,7 +160,7 @@ class Target:
             assert False
         elif self._targetType == TargetType.ISO_DIR:
             _Common.install_platform(self, platform_type, source,
-                                     tmpDir=kwargs.get("tmp_dir", None),
+                                     tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_boot_img(platform_type, ret, source, self._bootDir)
@@ -278,16 +283,16 @@ class Target:
         _Efi.remove_remaining_crufts(self._bootDir)
         _Common.remove_remaining_crufts(self)
 
-    def check_with_source(self, source):
+    def check_with_source(self, source, **kwargs):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                restFiles = _Common.check_platform_and_redundants(self, pt, source)
-                if platform_type == PlatformType.I386_PC:
+                restFiles = _Common.check_platform_and_redundants(self, pt, source, tmpDir=self._tmpDir)
+                if pt == PlatformType.I386_PC:
                     _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
-                elif Handy.isPlatformEfi(platform_type):
+                elif Handy.isPlatformEfi(pt):
                     pass
                 else:
                     assert False
@@ -295,10 +300,10 @@ class Target:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                restFiles = _Common.check_platform_and_redundants(self, pt, source)
-                if platform_type == PlatformType.I386_PC:
+                restFiles = _Common.check_platform_and_redundants(self, pt, source, tmpDir=self._tmpDir)
+                if pt == PlatformType.I386_PC:
                     _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
-                elif Handy.isPlatformEfi(platform_type):
+                elif Handy.isPlatformEfi(pt):
                     pass
                 else:
                     assert False
@@ -328,14 +333,13 @@ class _Common:
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(grubDir, platform_type.value)
 
-        mnt = Grub.probeMnt(p._bootDir)
-        if mnt.fs_uuid is None:
+        if p._mnt.fs_uuid is None:
             raise InstallError("no fsuuid found")
-        if Handy.isPlatformEfi(platform_type) and (mnt.mnt_dir != p._bootDir or mnt.fs != "fat"):
+        if Handy.isPlatformEfi(platform_type) and (p._mnt.mnt_dir != p._bootDir or p._mnt.fs != "fat"):
             raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
         # get module list and hints
-        moduleList, hints = Grub.getModuleListAndHnits(platform_type, mnt)
+        moduleList, hints = Grub.getModuleListAndHnits(platform_type, p._mnt)
 
         # install module files
         # FIXME: install only required modules
@@ -362,8 +366,8 @@ class _Common:
 
         # make core.img
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
-        coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, mnt.fs_uuid,
-                                     hints, rel_path(mnt.mnt_dir, grubDir), debugImage, tmp_dir=tmpDir)
+        coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, p._mnt.fs_uuid,
+                                     hints, rel_path(p._mnt.mnt_dir, grubDir), debugImage, tmpDir=tmpDir)
         with open(os.path.join(platDirDst, coreName), "wb") as f:
             f.write(coreBuf)
 
@@ -377,7 +381,7 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check_platform_and_redundants(p, platform_type, source):
+    def check_platform_and_redundants(p, platform_type, source, tmpDir=None):
         grubDir = os.path.join(p._bootDir, "grub")
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(p._bootDir, "grub", platform_type.value)
@@ -412,9 +416,10 @@ class _Common:
         # check core.img
         bSame = False
         for debugImage in [False, True]:
+            moduleList, hints = Grub.getModuleListAndHnits(platform_type, p._mnt)
             coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
-            coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, mnt.fs_uuid,
-                                         hints, rel_path(mnt.mnt_dir, grubDir), debugImage, tmp_dir=tmpDir)
+            coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, p._mnt.fs_uuid,
+                                         hints, rel_path(p._mnt.mnt_dir, grubDir), debugImage, tmpDir=tmpDir)
             coreImgPath = os.path.join(platDirDst, coreName)
             if not compare_file_and_content(coreImgPath, coreBuf):
                 fileSet.add(coreImgPath)

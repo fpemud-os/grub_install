@@ -266,21 +266,17 @@ class Grub:
             loadCfgFile = os.path.join(tdir, "load.cfg")
             coreImgFile = os.pat.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
-                f.write(load_cfg_file_content)
+                f.write(buf)
             subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
     def probeMnt(dir):
-        assert os.path.isabs(dir) and not dir.endswith("/")
-        dir = dir + "/"
-
-        tlist = []
-        for p in psutil.disk_partitions():
-            if dir.startswith(p.mountpoint):
-                tlist.append(p)
-        tlist.sort(key=lambda x: len(x.mountpoint))
-        ret = tlist[-1]
+        ret = [p for p in psutil.disk_partitions() if dir == p.mountpoint]
+        if len(ret) == 0:
+            return None
+        assert len(ret) == 1
+        ret = ret[0]
 
         try:
             fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", ret.device], universal_newlines=True).rstrip("\n")
