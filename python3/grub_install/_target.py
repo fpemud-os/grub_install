@@ -42,7 +42,7 @@ class Target:
 
         self._targetType = target_type
         self._mode = target_access_mode
-        self._tmpDir = kwargs.get("my_tmp_dir", None)
+        self._tmpDir = kwargs.get("tmp_work_dir", None)
 
         # target specific variables
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
@@ -83,7 +83,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
+                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 _PyCdLib.init_platforms(self)
                 for k, v in self._platforms.items():
@@ -97,7 +97,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
+                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
                 for k, v in self._platforms.items():
@@ -109,7 +109,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newUnbootablePlatformInstallInfo(str(e))
+                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
             else:
                 assert False
 
@@ -123,7 +123,7 @@ class Target:
 
     @property
     def platforms(self):
-        return [k for k, v in self._platforms.items() if v.status == PlatformInstallInfo.Status.BOOTABLE]
+        return [k for k, v in self._platforms.items() if v.status == PlatformInstallInfo.Status.PERFECT]
 
     def get_platform_install_info(self, platform_type):
         assert isinstance(platform_type, PlatformType)
@@ -139,7 +139,7 @@ class Target:
         assert isinstance(source, Source)
 
         ret = PlatformInstallInfo()
-        ret.status = PlatformInstallInfo.Status.BOOTABLE
+        ret.status = PlatformInstallInfo.Status.PERFECT
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source,
@@ -190,9 +190,9 @@ class Target:
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_from_mbr(platform_type, self._dev)
+                _Bios.remove_from_mbr(platform_type, self._platforms[platform_type], self._dev)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._platforms[platform_type], self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -203,7 +203,7 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 pass
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._platforms[platform_type], self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -293,7 +293,7 @@ class Target:
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                restFiles = _Common.check_platform_and_redundants(self, pt, source, tmpDir=self._tmpDir)
+                restFiles = _Common.check_platform(self, pt, source, tmpDir=self._tmpDir)
                 if pt == PlatformType.I386_PC:
                     _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
                 elif Handy.isPlatformEfi(pt):
@@ -304,7 +304,7 @@ class Target:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                restFiles = _Common.check_platform_and_redundants(self, pt, source, tmpDir=self._tmpDir)
+                restFiles = _Common.check_platform(self, pt, source, tmpDir=self._tmpDir)
                 if pt == PlatformType.I386_PC:
                     _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
                 elif Handy.isPlatformEfi(pt):
@@ -326,7 +326,7 @@ class _Common:
             for fn in os.listdir(grubDir):
                 try:
                     obj = PlatformInstallInfo()
-                    obj.status = PlatformInstallInfo.Status.BOOTABLE
+                    obj.status = PlatformInstallInfo.Status.PERFECT
                     p._platforms[PlatformType(fn)] = obj
                 except ValueError:
                     pass
@@ -385,7 +385,7 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check_platform_and_redundants(p, platform_type, source, tmpDir=None):
+    def check_platform(p, platform_type, source, tmpDir=None):
         grubDir = os.path.join(p._bootDir, "grub")
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(p._bootDir, "grub", platform_type.value)
@@ -497,6 +497,7 @@ class _Bios:
 
         # read MBR and MBR-gap
         tmpBootBuf, tmpCoreBuf, tmpRestBuf = None, None, None
+        cls._checkDisk(dev, TargetError)
         with open(dev, "rb") as f:
             tmpBootBuf = f.read(len(bootBuf))
             tmpCoreBuf = f.read(len(coreBuf))
@@ -607,7 +608,10 @@ class _Bios:
         platform_install_info.rs_codes = bAddRsCodes
 
     @classmethod
-    def remove_from_mbr(cls, platform_type, dev):
+    def remove_from_mbr(cls, platform_type, platform_install_info, dev):
+        if not platform_install_info.mbr_installed:
+            return
+
         cls._checkDisk(dev, None)
 
         with open(dev, "rb+") as f:
@@ -753,7 +757,7 @@ class _Efi:
         platform_install_info.nvram = bUpdateNvram
 
     @staticmethod
-    def remove_from_efi_dir(platform_type, bootDir):
+    def remove_from_efi_dir(platform_type, platform_install_info, bootDir):
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFilename(platform_type)
@@ -779,10 +783,10 @@ class _PyCdLib:
         pass
 
 
-def _newUnbootablePlatformInstallInfo(unbootable_reason):
+def _newWithFlawsPlatformInstallInfo(reason):
     ret = PlatformInstallInfo()
-    ret.status = PlatformInstallInfo.Status.UNBOOTABLE
-    ret.unbootable_reason = unbootable_reason
+    ret.status = PlatformInstallInfo.Status.WITH_FLAWS
+    ret.reason = reason
     return ret
 
 
