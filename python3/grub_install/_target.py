@@ -380,29 +380,37 @@ class _Common:
         platDirDst = os.path.join(p._bootDir, "grub", platform_type.value)
         assert os.path.exists(platDirDst)
 
-        fileSet = set()
-
-        def __check(fullfn, fullfn2):
-            # FIXME: check owner, group, mode?
-            if not os.path.exists(fullfn2):
-                raise CheckError("%s does not exist" % (fullfn2))
-            if not compare_files(fullfn, fullfn2):
-                raise CheckError("%s and %s are different" % (fullfn, fullfn2))
-            fileSet.add(fullfn2)
-
         # check module files
-        for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
-            __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
+        if True:
+            fileSet = set()
 
-        # check addon files
-        for fn in Grub.PLATFORM_ADDON_FILES:
-            __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
+            def __check(fullfn, fullfn2):
+                # FIXME: check owner, group, mode?
+                if not os.path.exists(fullfn2):
+                    raise CheckError("%s does not exist" % (fullfn2))
+                if not compare_files(fullfn, fullfn2):
+                    raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                fileSet.add(fullfn2)
 
-        # check optional addon files
-        for fn in Grub.PLATFORM_OPTIONAL_ADDON_FILES:
-            fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
-            if os.path.exists(fullfn):
-                __check(fullfn, fullfn2)
+            # check module files
+            for fullfn in glob.glob(os.path.join(platDirSrc, "*.mod")):
+                __check(fullfn, os.path.join(platDirDst, os.path.basename(fullfn)))
+
+            # check addon files
+            for fn in Grub.PLATFORM_ADDON_FILES:
+                __check(os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn))
+
+            # check optional addon files
+            for fn in Grub.PLATFORM_OPTIONAL_ADDON_FILES:
+                fullfn, fullfn2 = os.path.join(platDirSrc, fn), os.path.join(platDirDst, fn)
+                if os.path.exists(fullfn):
+                    __check(fullfn, fullfn2)
+
+            ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
+            if len(ret) > 0:
+                raise CheckError("redundant file %s found" % (ret[0]))
+
+
 
         # check core image file
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
@@ -416,10 +424,6 @@ class _Common:
 
         with open(coreImgPath, "Wb") as f:
             f.write(coreBuf)
-
-
-        # return redundant files
-        return list(set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet)
 
     @staticmethod
     def check_data(p, source, auto_fix):
