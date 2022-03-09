@@ -267,7 +267,7 @@ class Grub:
             coreImgFile = os.path.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(buf)
-            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
+            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-p", prefixDir, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
