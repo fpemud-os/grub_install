@@ -88,8 +88,8 @@ def compare_files(filepath1, filepath2):
 
 
 def compare_directories(dirpath1, dirpath2):
-    ret1 = os.listdir(dirpath1)
-    ret2 = os.listdir(dirpath2)
+    ret1 = set(os.listdir(dirpath1))
+    ret2 = set(os.listdir(dirpath2))
     if ret1 != ret2:
         return False
     for fn in ret1:
