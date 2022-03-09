@@ -189,9 +189,9 @@ class Target:
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_from_mbr(platform_type, self._platforms[platform_type], self._mnt.disk)
+                _Bios.remove_from_mbr(platform_type, self._mnt.disk)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._platforms[platform_type], self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -202,7 +202,7 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 pass
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._platforms[platform_type], self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -504,11 +504,7 @@ class _Bios:
 
         # boot.img and core.img is not installed
         if tmpBootBuf == cls._getAllZeroBootBuf(tmpBootBuf) and is_buffer_all_zero(tmpCoreBuf) and is_buffer_all_zero(tmpRestBuf):
-            platform_install_info.mbr_installed = False
-            platform_install_info.allow_floppy = True
-            platform_install_info.bpb = True
-            platform_install_info.rs_codes = True
-            return
+            raise TargetError("boot.img and core.img are not installed to disk")
 
         # prepare bootBuf
         if True:
@@ -607,10 +603,7 @@ class _Bios:
         platform_install_info.rs_codes = bAddRsCodes
 
     @classmethod
-    def remove_from_mbr(cls, platform_type, platform_install_info, dev):
-        if not platform_install_info.mbr_installed:
-            return
-
+    def remove_from_mbr(cls, platform_type, dev):
         cls._checkDisk(dev, None)
 
         with open(dev, "rb+") as f:
@@ -756,7 +749,7 @@ class _Efi:
         platform_install_info.nvram = bUpdateNvram
 
     @staticmethod
-    def remove_from_efi_dir(platform_type, platform_install_info, bootDir):
+    def remove_from_efi_dir(platform_type, bootDir):
         efiDir = os.path.join(bootDir, "EFI")
         efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
         efiFn = Handy.getStandardEfiFilename(platform_type)
