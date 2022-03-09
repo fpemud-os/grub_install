@@ -205,7 +205,7 @@ class Target(abc.ABC):
         # delete PlatformInstallInfo object
         del self._platforms[platform_type]
 
-    def install_data(self, source, locales=None, fonts=None, themes=None):
+    def install_data_files(self, source, locales=None, fonts=None, themes=None):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
         if locales is not None:
             assert source.supports(source.CAP_NLS)
@@ -247,7 +247,7 @@ class Target(abc.ABC):
                 for tname in themes:
                     shutil.copytree(source.get_theme_directory(tname), dstDir)
 
-    def remove_data(self):
+    def remove_data_files(self):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
 
         grubDir = os.path.join(self._bootDir, "grub")
@@ -285,18 +285,24 @@ class Target(abc.ABC):
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                ret = _Common.check_platform_and_redundants(self, pt, source)
+                restFiles = _Common.check_platform_and_redundants(self, pt, source)
                 if platform_type == PlatformType.I386_PC:
-                    _Bios.check_mbr(pt, self._bootDir, self._dev, ret)
+                    _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
                 elif Handy.isPlatformEfi(platform_type):
-                    _Efi.check_efi_dir(pt, self._bootDir)
+                    pass
                 else:
                     assert False
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                ret = _Common.check_platform_and_redundants(self, pt, source)
+                restFiles = _Common.check_platform_and_redundants(self, pt, source)
+                if platform_type == PlatformType.I386_PC:
+                    _Bios.check_rest_files(pt, source, self._bootDir, restFiles)
+                elif Handy.isPlatformEfi(platform_type):
+                    pass
+                else:
+                    assert False
             else:
                 assert False
 
@@ -535,7 +541,9 @@ class _Bios:
 
     @classmethod
     def install_boot_img(cls, platform_type, platform_install_info, source, bootDir):
-        shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), os.path.join(bootDir, "grub", platform_type.value))
+        srcFile = os.path.join(source.get_platform_directory(platform_type), "boot.img")
+        dstDir = os.path.join(bootDir, "grub", platform_type.value)
+        shutil.copy(srcFile, dstDir)
 
         # fill custom attributes
         platform_install_info.mbr_installed = False
@@ -604,6 +612,23 @@ class _Bios:
             f.write(allZeroBootBuf)
             for i in range(0, cls._getCoreImgMaxSize() - len(allZeroBootBuf)):
                 f.write(b'\x00')
+
+    @classmethod
+    def check_rest_files(platform_type, source, bootDir, rest_files):
+        srcFile = os.path.join(source.get_platform_directory(platform_type), "boot.img")
+        assert os.path.exists(srcFile)
+
+        dstFile = os.path.join(bootDir, "grub", platform_type.value, "boot.img")
+        if os.path.exists(dstFile):
+            assert dstFile in rest_files
+            rest_files.remove(dstFile)
+            if not compare_files(srcFile, dstFile):
+                raise CheckError("%s and %s are different" % (srcFile, dstFile))
+        else:
+            raise CheckError("%s does not exist" % (dstFile))
+
+        if len(rest_files) > 0:
+            raise CheckError("redundant file %s found" % (rest_files[0]))
 
     @staticmethod
     def _getCoreImgMaxSize():
