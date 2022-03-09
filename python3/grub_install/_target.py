@@ -287,7 +287,7 @@ class Target:
         _Efi.remove_remaining_crufts(self._bootDir)
         _Common.remove_remaining_crufts(self)
 
-    def check_with_source(self, source, **kwargs):
+    def check_with_source(self, source):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
