@@ -621,7 +621,7 @@ class _Bios:
             for i in range(0, cls._getCoreImgMaxSize() - len(allZeroBootBuf)):
                 f.write(b'\x00')
 
-    @staticemethod
+    @staticmethod
     def check_rest_files(platform_type, source, bootDir, rest_files):
         srcFile = os.path.join(source.get_platform_directory(platform_type), "boot.img")
         assert os.path.exists(srcFile)
