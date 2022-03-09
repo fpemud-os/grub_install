@@ -53,8 +53,12 @@ class Target:
                 self._bootDir = os.path.join(self._rootfsDir, "boot")
             if self._rootfsDir is not None:
                 self._mnt = Grub.probeMnt(self._rootfsDir)
+                if self._mnt is None:
+                    raise TargetError("no mount point found for rootfs directory")
             else:
                 self._mnt = Grub.probeMnt(self._bootDir)
+                if self._mnt is None:
+                    raise TargetError("no mount point found for boot directory")
             self._dev = kwargs["dev"]
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
