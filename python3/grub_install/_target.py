@@ -76,7 +76,7 @@ class Target:
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info(k, v, self._bootDir, self._mnt.disk)
+                            _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._mnt.disk)
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
                         else:
@@ -102,7 +102,7 @@ class Target:
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info(k, v, self._bootDir, None)
+                            _Bios.fill_platform_install_info_without_mbr(k, v, self._bootDir)
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
                         else:
@@ -145,13 +145,11 @@ class Target:
                                      tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_boot_img(platform_type, ret, source, self._bootDir)
-                if kwargs.get("bootsector", True):
-                    _Bios.install_into_mbr(platform_type, ret, source, self._bootDir, self._mnt.disk,
-                                           False,                                                       # bFloppyOrHdd
-                                           kwargs.get("allow_floppy", False),                           # bAllowFloppy
-                                           kwargs.get("bpb", True),                                     # bBpb
-                                           kwargs.get("rs_codes", True))                                # bAddRsCodes
+                _Bios.install_with_mbr(platform_type, ret, source, self._bootDir, self._mnt.disk,
+                                       False,                                                           # bFloppyOrHdd
+                                       kwargs.get("allow_floppy", False),                               # bAllowFloppy
+                                       kwargs.get("bpb", True),                                         # bBpb
+                                       kwargs.get("rs_codes", True))                                    # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
                                           kwargs.get("removable", False),                               # bRemovable
@@ -166,11 +164,11 @@ class Target:
                                      tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_boot_img(platform_type, ret, source, self._bootDir)
+                _Bios.install_without_mbr(platform_type, ret, source, self._bootDir)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
-                                          kwargs.get("removable", False),                       # bRemovable
-                                          False)                                                # bUpdateNvram
+                                          kwargs.get("removable", False),                               # bRemovable
+                                          False)                                                        # bUpdateNvram
             else:
                 assert False
         else:
@@ -482,17 +480,19 @@ class _Common:
 class _Bios:
 
     @classmethod
-    def fill_platform_install_info(cls, platform_type, platform_install_info, bootDir, dev):
+    def fill_platform_install_info_without_mbr(cls, platform_type, platform_install_info, bootDir):
+        cls._checkAndReadBootImg(platform_type, bootDir, TargetError)
+        cls._checkAndReadCoreImg(platform_type, bootDir, TargetError)
+
+        platform_install_info.mbr_installed = False
+        platform_install_info.allow_floppy = True
+        platform_install_info.bpb = True
+        platform_install_info.rs_codes = True
+
+    @classmethod
+    def fill_platform_install_info_with_mbr(cls, platform_type, platform_install_info, bootDir, dev):
         bootBuf = bytearray(cls._checkAndReadBootImg(platform_type, bootDir, TargetError))     # bootBuf needs to be writable
         coreBuf = cls._checkAndReadCoreImg(platform_type, bootDir, TargetError)
-
-        # no MBR probe needed
-        if dev is None:
-            platform_install_info.mbr_installed = False
-            platform_install_info.allow_floppy = True
-            platform_install_info.bpb = True
-            platform_install_info.rs_codes = True
-            return
 
         # read MBR and MBR-gap
         tmpBootBuf, tmpCoreBuf, tmpRestBuf = None, None, None
@@ -544,10 +544,9 @@ class _Bios:
         return
 
     @classmethod
-    def install_boot_img(cls, platform_type, platform_install_info, source, bootDir):
-        srcFile = os.path.join(source.get_platform_directory(platform_type), "boot.img")
-        dstDir = os.path.join(bootDir, "grub", platform_type.value)
-        shutil.copy(srcFile, dstDir)
+    def install_without_mbr(cls, platform_type, platform_install_info, source, bootDir):
+        # copy boot.img
+        shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), os.path.join(bootDir, "grub", platform_type.value))
 
         # fill custom attributes
         platform_install_info.mbr_installed = False
@@ -556,8 +555,11 @@ class _Bios:
         platform_install_info.rs_codes = False
 
     @classmethod
-    def install_into_mbr(cls, platform_type, platform_install_info, bootDir, dev, bFloppyOrHdd, bAllowFloppy, bBpb, bAddRsCodes):
+    def install_with_mbr(cls, platform_type, platform_install_info, source, bootDir, dev, bFloppyOrHdd, bAllowFloppy, bBpb, bAddRsCodes):
         assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
+
+        # copy boot.img
+        shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), os.path.join(bootDir, "grub", platform_type.value))
 
         bootBuf = bytearray(cls._checkAndReadBootImg(platform_type, bootDir, InstallError))     # bootBuf needs to be writable
         coreBuf = cls._checkAndReadCoreImg(platform_type, bootDir, InstallError)
