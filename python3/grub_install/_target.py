@@ -588,15 +588,41 @@ class _Bios:
                     s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                     bootBuf[s:e] = tmpBootBuf[s:e]
 
+            # encode core.img
+            if bAddRsCodes:
+
+    grub_size_t no_rs_length;
+    no_rs_length = grub_target_to_host16 
+      (grub_get_unaligned16 (core_img
+			     + GRUB_DISK_SECTOR_SIZE
+			     + GRUB_KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH));
+
+    if (no_rs_length == 0xffff)
+      grub_util_error ("%s", _("core.img version mismatch"));
+
+    if (add_rs_codes)
+      {
+	grub_set_unaligned32 ((core_img + GRUB_DISK_SECTOR_SIZE
+			       + GRUB_KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY),
+			      grub_host_to_target32 (nsec * GRUB_DISK_SECTOR_SIZE - core_size));
+
+	void *tmp = xmalloc (core_size);
+	grub_memcpy (tmp, core_img, core_size);
+	grub_reed_solomon_add_redundancy (core_img + no_rs_length + GRUB_DISK_SECTOR_SIZE,
+					  core_size - no_rs_length - GRUB_DISK_SECTOR_SIZE,
+					  nsec * GRUB_DISK_SECTOR_SIZE
+					  - core_size);
+	assert (grub_memcmp (tmp, core_img, core_size) == 0);
+	free (tmp);
+      }
+
+
             # write up to cls._getCoreImgMaxSize()
             f.seek(0)
-            if bAddRsCodes:
-                assert False
-            else:
-                f.write(bootBuf)
-                f.write(coreBuf)
-                for i in range(0, cls._getCoreImgMaxSize() - len(coreBuf) - len(bootBuf)):
-                    f.write(b'\x00')
+            f.write(bootBuf)
+            f.write(coreBuf)
+            for i in range(0, cls._getCoreImgMaxSize() - len(coreBuf) - len(bootBuf)):
+                f.write(b'\x00')
 
         # fill custom attributes
         platform_install_info.mbr_installed = True
