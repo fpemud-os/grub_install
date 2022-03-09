@@ -23,7 +23,6 @@
 
 import os
 import re
-import abc
 import glob
 import shutil
 import parted
