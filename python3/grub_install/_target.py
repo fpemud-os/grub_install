@@ -29,7 +29,7 @@ import parted
 import pathlib
 from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
-from ._errors import TargetError, InstallError, CheckError
+from ._errors import TargetError, InstallError, CompareSourceError
 from ._handy import Handy, Grub
 from ._source import Source
 
@@ -286,7 +286,7 @@ class Target:
         _Efi.remove_remaining_crufts(self._bootDir)
         _Common.remove_remaining_crufts(self)
 
-    def check_with_source(self, source):
+    def compare_source(self, source):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
@@ -397,9 +397,9 @@ class _Common:
             def __check(fullfn, fullfn2):
                 # FIXME: check owner, group, mode?
                 if not os.path.exists(fullfn2):
-                    raise CheckError("%s does not exist" % (fullfn2))
+                    raise CompareSourceError("%s does not exist" % (fullfn2))
                 if not compare_files(fullfn, fullfn2):
-                    raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                    raise CompareSourceError("%s and %s are different" % (fullfn, fullfn2))
                 fileSet.add(fullfn2)
 
             # check module files
@@ -429,7 +429,7 @@ class _Common:
                 bSame = True
                 break
         if not bSame:
-            raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+            raise CompareSourceError("%s and %s are different" % (fullfn, fullfn2))
 
         # check redundant
         return set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
@@ -439,7 +439,7 @@ class _Common:
         localeDir = os.path.join(p._bootDir, "grub", "locale")
         if os.path.exists(localeDir):
             if not source.supports(source.CAP_NLS):
-                raise CheckError("NLS is not supported")
+                raise CompareSourceError("NLS is not supported")
             for fn2 in os.listdir(localeDir):
                 fullfn2 = os.path.join(localeDir, fn2)
                 if fn2.endswith(".mo"):
@@ -447,36 +447,36 @@ class _Common:
                     fullfn = source.try_get_locale_file(lname)
                     if fullfn is not None:
                         if not compare_files(fullfn, fullfn2):
-                            raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                            raise CompareSourceError("%s and %s are different" % (fullfn, fullfn2))
                         continue
-                raise CheckError("redundant file %s found" % (fullfn2))
+                raise CompareSourceError("redundant file %s found" % (fullfn2))
 
         fontsDir = os.path.join(p._bootDir, "grub", "fonts")
         if os.path.exists(fontsDir):
             if not source.supports(source.CAP_FONTS):
-                raise CheckError("fonts is not supported")
+                raise CompareSourceError("fonts is not supported")
             for fullfn2 in glob.glob(os.path.join(fontsDir, "*.pf2")):
                 fname = os.path.basename(fullfn2).replace(".pf2", "")
                 fullfn = source.try_get_font_file(fname)
                 if fullfn is not None:
                     if not compare_files(fullfn, fullfn2):
-                        raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                        raise CompareSourceError("%s and %s are different" % (fullfn, fullfn2))
                     continue
-                raise CheckError("redundant file %s found" % (fullfn2))
+                raise CompareSourceError("redundant file %s found" % (fullfn2))
 
         themesDir = os.path.join(p._bootDir, "grub", "themes")
         if os.path.exists(themesDir):
             if not source.supports(source.CAP_THEMES):
-                raise CheckError("themes is not supported")
+                raise CompareSourceError("themes is not supported")
             for tname in os.listdir(themesDir):
                 fullfn2 = os.path.join(themesDir, tname)
                 if os.path.isdir(fullfn2):
                     fullfn = source.try_get_theme_directory(tname)
                     if fullfn is not None:
                         if not compare_directories(fullfn, fullfn2):
-                            raise CheckError("%s and %s are different" % (fullfn, fullfn2))
+                            raise CompareSourceError("%s and %s are different" % (fullfn, fullfn2))
                         continue
-                raise CheckError("redundant file %s found" % (fullfn2))
+                raise CompareSourceError("redundant file %s found" % (fullfn2))
 
 
 class _Bios:
@@ -634,12 +634,12 @@ class _Bios:
             assert dstFile in rest_files
             rest_files.remove(dstFile)
             if not compare_files(srcFile, dstFile):
-                raise CheckError("%s and %s are different" % (srcFile, dstFile))
+                raise CompareSourceError("%s and %s are different" % (srcFile, dstFile))
         else:
-            raise CheckError("%s does not exist" % (dstFile))
+            raise CompareSourceError("%s does not exist" % (dstFile))
 
         if len(rest_files) > 0:
-            raise CheckError("redundant file %s found" % (rest_files[0]))
+            raise CompareSourceError("redundant file %s found" % (rest_files[0]))
 
     @staticmethod
     def _getCoreImgMaxSize():

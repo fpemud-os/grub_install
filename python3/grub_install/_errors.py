@@ -29,13 +29,13 @@ class CopySourceError(Exception):
     pass
 
 
+class CompareSourceError(Exception):
+    pass
+
+
 class TargetError(Exception):
     pass
 
 
 class InstallError(Exception):
-    pass
-
-
-class CheckError(Exception):
     pass
