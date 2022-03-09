@@ -254,11 +254,17 @@ class Grub:
 
         os.rename(tmpName, name)
 
-    @staticmethod
-    def makeCoreImage(source, platform_type, load_cfg_file_content, mkimage_target, module_list, tmp_dir=None):
-        with tempfile.TemporaryDirectory(dir=tmp_dir) as tmpdir:
-            loadCfgFile = os.path.join(tmpdir, "load.cfg")
-            coreImgFile = os.pat.join(tmpdir, "core.img")
+    @classmethod
+    def makeCoreImage(cls, source, platform_type, mkimage_target, module_list, rootFsUuid, rootHints, prefixDir, bDebugImage, tmpDir=None):
+        buf = ""
+        if bDebugImage is not None:
+            buf += "set debug='%s'\n" % (bDebugImage)
+        buf += "search.fs_uuid %s root%s\n" % (rootFsUuid, (" " + rootHints) if rootHints != "" else "")
+        buf += "set prefix=($root)'%s'\n" % (cls.escape(prefixDir))
+
+        with tempfile.TemporaryDirectory(dir=tmpDir) as tdir:
+            loadCfgFile = os.path.join(tdir, "load.cfg")
+            coreImgFile = os.pat.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(load_cfg_file_content)
             subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)

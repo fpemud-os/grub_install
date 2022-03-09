@@ -279,23 +279,28 @@ class Target(abc.ABC):
         _Efi.remove_remaining_crufts(self._bootDir)
         _Common.remove_remaining_crufts(self)
 
-    def check_with_source(self, source, auto_fix=False):
+    def check_with_source(self, source):
         assert self._mode in [TargetAccessMode.R, TargetAccessMode.RW]
         assert isinstance(source, Source)
 
         for pt in self._platforms:
             if self._targetType == TargetType.MOUNTED_HDD_DEV:
-                ret = _Common.check_platform(self, pt, source, auto_fix)
+                ret = _Common.check_platform_and_redundants(self, pt, source)
+                if platform_type == PlatformType.I386_PC:
+                    _Bios.check_mbr(pt, self._bootDir, self._dev, ret)
+                elif Handy.isPlatformEfi(platform_type):
+                    _Efi.check_efi_dir(pt, self._bootDir)
+                else:
+                    assert False
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 # FIXME
                 assert False
             elif self._targetType == TargetType.ISO_DIR:
-                ret = _Common.check_platform(self, pt, source, auto_fix)
+                ret = _Common.check_platform_and_redundants(self, pt, source)
             else:
                 assert False
 
-        _Common.check_data(self, source, auto_fix)
-
+        _Common.check_data(self, source)
 
 
 class _Common:
@@ -315,6 +320,8 @@ class _Common:
     @staticmethod
     def install_platform(p, platform_type, source, tmpDir=None, debugImage=None):
         grubDir = os.path.join(p._bootDir, "grub")
+        platDirSrc = source.get_platform_directory(platform_type)
+        platDirDst = os.path.join(grubDir, platform_type.value)
 
         mnt = Grub.probeMnt(p._bootDir)
         if mnt.fs_uuid is None:
@@ -328,9 +335,6 @@ class _Common:
         # install module files
         # FIXME: install only required modules
         if True:
-            platDirSrc = source.get_platform_directory(platform_type)
-            platDirDst = os.path.join(grubDir, platform_type.value)
-
             force_mkdir(platDirDst, clear=True)
 
             def __copy(fullfn, dstDir):
@@ -351,18 +355,11 @@ class _Common:
                 if os.path.exists(fullfn):
                     __copy(fullfn, platDirDst)
 
-        # generate load.cfg for core.img
-        buf = ""
-        if debugImage is not None:
-            buf += "set debug='%s'\n" % (debugImage)
-        buf += "search.fs_uuid %s root%s\n" % (mnt.fs_uuid, (" " + hints) if hints != "" else "")
-        buf += "set prefix=($root)'%s'\n" % (Grub.escape(rel_path(mnt.mnt_dir, grubDir)))
-
         # make core.img
         coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
-        coreImgPath = os.path.join(grubDir, platform_type.value, coreName)
-        coreBuf = Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, tmp_dir=tmpDir)
-        with open(coreImgPath, "Wb") as f:
+        coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, mnt.fs_uuid,
+                                     hints, rel_path(mnt.mnt_dir, grubDir), debugImage, tmp_dir=tmpDir)
+        with open(os.path.join(platDirDst, coreName), "wb") as f:
             f.write(coreBuf)
 
     @staticmethod
@@ -375,15 +372,16 @@ class _Common:
         force_rm(os.path.join(p._bootDir, "grub"))
 
     @staticmethod
-    def check_platform(p, platform_type, source, auto_fix):
+    def check_platform_and_redundants(p, platform_type, source):
+        grubDir = os.path.join(p._bootDir, "grub")
         platDirSrc = source.get_platform_directory(platform_type)
         platDirDst = os.path.join(p._bootDir, "grub", platform_type.value)
         assert os.path.exists(platDirDst)
 
+        fileSet = set()
+
         # check module files
         if True:
-            fileSet = set()
-
             def __check(fullfn, fullfn2):
                 # FIXME: check owner, group, mode?
                 if not os.path.exists(fullfn2):
@@ -406,27 +404,25 @@ class _Common:
                 if os.path.exists(fullfn):
                     __check(fullfn, fullfn2)
 
-            ret = set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
-            if len(ret) > 0:
-                raise CheckError("redundant file %s found" % (ret[0]))
+        # check core.img
+        bSame = False
+        for debugImage in [False, True]:
+            coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
+            coreBuf = Grub.makeCoreImage(source, platform_type, mkimageTarget, moduleList, mnt.fs_uuid,
+                                         hints, rel_path(mnt.mnt_dir, grubDir), debugImage, tmp_dir=tmpDir)
+            coreImgPath = os.path.join(platDirDst, coreName)
+            if not compare_file_and_content(coreImgPath, coreBuf):
+                fileSet.add(coreImgPath)
+                bSame = True
+                break
+        if not bSame:
+            raise CheckError("%s and %s are different" % (fullfn, fullfn2))
 
-
-
-        # check core image file
-        coreName, mkimageTarget = Grub.getCoreImgNameAndTarget(platform_type)
-        coreImgPath = os.path.join(platDirDst, coreName)
-        coreBuf = Grub.makeCoreImage(source, platform_type, buf, mkimageTarget, moduleList, tmp_dir=tmpDir)
-
-
-        if not compare_file_and_content(coreImgPath, coreBuf):
-
-
-
-        with open(coreImgPath, "Wb") as f:
-            f.write(coreBuf)
+        # check redundant
+        return set(glob.glob(os.path.join(platDirDst, "*"))) - fileSet
 
     @staticmethod
-    def check_data(p, source, auto_fix):
+    def check_data(p, source):
         localeDir = os.path.join(p._bootDir, "grub", "locale")
         if os.path.exists(localeDir):
             if not source.supports(source.CAP_NLS):
