@@ -26,9 +26,8 @@ import psutil
 import pathlib
 import tempfile
 import subprocess
-from ._util import rel_path, force_mkdir, compare_files
+from ._util import PartiUtil
 from ._const import PlatformType
-from ._errors import CheckError
 
 
 class Handy:
@@ -299,8 +298,9 @@ class Grub:
             efi_hints = ""
 
         class Mnt:
-            def __init__(self, dev, fs, fs_uuid, mnt_dir, mnt_opts, bios_hints, efi_hints):
+            def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, bios_hints, efi_hints):
                 self.dev = dev
+                self.disk = disk
                 self.fs = fs
                 self.fs_uuid = fs_uuid
                 self.mnt_dir = mnt_dir
@@ -308,7 +308,7 @@ class Grub:
                 self.bios_hints = bios_hints
                 self.efi_hints = efi_hints
 
-        return Mnt(ret.device, fs, fs_uuid, ret.mountpoint, ret.opts, bios_hints, efi_hints)
+        return Mnt(ret.device, PartiUtil.partiToDisk(ret.device), fs, fs_uuid, ret.mountpoint, ret.opts, bios_hints, efi_hints)
 
     @staticmethod
     def escape(in_str):

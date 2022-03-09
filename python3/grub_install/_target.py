@@ -59,7 +59,6 @@ class Target:
                 self._mnt = Grub.probeMnt(self._bootDir)
                 if self._mnt is None:
                     raise TargetError("no mount point found for boot directory")
-            self._dev = kwargs["dev"]
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
             self._iso = kwargs.get["obj"]
@@ -77,7 +76,7 @@ class Target:
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info(k, v, self._bootDir, self._dev)
+                            _Bios.fill_platform_install_info(k, v, self._bootDir, self._mnt.disk)
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
                         else:
@@ -148,15 +147,15 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_boot_img(platform_type, ret, source, self._bootDir)
                 if kwargs.get("bootsector", True):
-                    _Bios.install_into_mbr(platform_type, ret, source, self._bootDir, self._dev,
-                                           False,                                               # bFloppyOrHdd
-                                           kwargs.get("allow_floppy", False),                   # bAllowFloppy
-                                           kwargs.get("bpb", True),                             # bBpb
-                                           kwargs.get("rs_codes", True))                        # bAddRsCodes
+                    _Bios.install_into_mbr(platform_type, ret, source, self._bootDir, self._mnt.disk,
+                                           False,                                                       # bFloppyOrHdd
+                                           kwargs.get("allow_floppy", False),                           # bAllowFloppy
+                                           kwargs.get("bpb", True),                                     # bBpb
+                                           kwargs.get("rs_codes", True))                                # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
-                                          kwargs.get("removable", False),                       # bRemovable
-                                          kwargs.get("update_nvram", False))                    # bUpdateNvram
+                                          kwargs.get("removable", False),                               # bRemovable
+                                          kwargs.get("update_nvram", True))                             # bUpdateNvram
             else:
                 assert False
         elif self._targetType == TargetType.PYCDLIB_OBJ:
@@ -190,7 +189,7 @@ class Target:
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_from_mbr(platform_type, self._platforms[platform_type], self._dev)
+                _Bios.remove_from_mbr(platform_type, self._platforms[platform_type], self._mnt.disk)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.remove_from_efi_dir(platform_type, self._platforms[platform_type], self._bootDir)
             else:
