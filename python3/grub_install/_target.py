@@ -529,9 +529,11 @@ class _Bios:
             s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
             bootBuf[s:e] = tmpBootBuf[s:e]
 
-        # compare
+        # compare boot.img
         if tmpBootBuf != bootBuf:
             raise TargetError("invalid MBR record content")
+
+        # compare core.img
         if tmpRestBuf[:len(coreBuf)] == coreBuf:
             bRsCodes = False
         else:
@@ -540,6 +542,8 @@ class _Bios:
                 bRsCodes = True
             else:
                 raise TargetError("invalid on-disk core.img content")
+
+        # compare rest bytes
         if not is_buffer_all_zero(tmpRestBuf):
             raise TargetError("disk content after core.img should be all zero")
 
@@ -548,7 +552,6 @@ class _Bios:
         platform_install_info.allow_floppy = bAllowFloppy
         platform_install_info.bpb = bBpb
         platform_install_info.rs_codes = bRsCodes
-        return
 
     @classmethod
     def install_without_mbr(cls, platform_type, platform_install_info, source, bootDir):
