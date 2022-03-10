@@ -730,7 +730,7 @@ class _Bios:
             raise InstallError("core.img version mismatch")
 
         newLen = cls._getCoreBufPossibleSize(coreBuf)
-        struct.pack_info(">I" if bigOrLittleEndian else "<I",
+        struct.pack_into(">I" if bigOrLittleEndian else "<I",
                          coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY, newLen)
 
         noRsLen += Grub.DISK_SECTOR_SIZE
