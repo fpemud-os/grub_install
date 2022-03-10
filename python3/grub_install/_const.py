@@ -77,6 +77,20 @@ class PlatformInstallInfo:
         return "<%s %r>" % (self.__class__.__name__, self.__dict__)
 
 
+class Mnt:
+
+    def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, grub_fs, grub_bios_hints, grub_efi_hints):
+        self.dev = dev
+        self.disk = disk
+        self.fs = fs
+        self.fs_uuid = fs_uuid
+        self.mnt_dir = mnt_dir
+        self.mnt_opts = mnt_opts
+        self.grub_fs = grub_fs
+        self.grub_bios_hints = grub_bios_hints
+        self.grub_efi_hints = grub_efi_hints
+
+
 #    MOUNTED_FDD_DEV = enum.auto()            # floppy device
 #    MOUNTED_HDD_DEV_APPLE = enum.auto()      # apple device
 #    APPLE_ISO_DIR = enum.auto()              # apple device

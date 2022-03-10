@@ -27,7 +27,7 @@ import pathlib
 import tempfile
 import subprocess
 from ._util import PartiUtil
-from ._const import PlatformType
+from ._const import PlatformType, Mnt
 
 
 class Handy:
@@ -167,13 +167,13 @@ class Grub:
         # disk module
         if platform_type == PlatformType.I386_PC:
             disk_module = "biosdisk"
-            hints = mnt.bios_hints
+            hints = mnt.grub_bios_hints
         elif platform_type == PlatformType.I386_MULTIBOOT:
             disk_module = "native"
             hints = ""
         elif Handy.isPlatformEfi(platform_type):
             disk_module = None
-            hints = mnt.efi_hints
+            hints = mnt.grub_efi_hints
         elif Handy.isPlatformCoreboot(platform_type):
             disk_module = "native"
             hints = ""
@@ -300,18 +300,7 @@ class Grub:
         except subprocess.CalledProcessError:
             efi_hints = ""
 
-        class Mnt:
-            def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, bios_hints, efi_hints):
-                self.dev = dev
-                self.disk = disk
-                self.fs = fs
-                self.fs_uuid = fs_uuid
-                self.mnt_dir = mnt_dir
-                self.mnt_opts = mnt_opts
-                self.bios_hints = bios_hints
-                self.efi_hints = efi_hints
-
-        return Mnt(ret.device, PartiUtil.partiToDisk(ret.device), fs, fs_uuid, ret.mountpoint, ret.opts, bios_hints, efi_hints)
+        return Mnt(ret.device, PartiUtil.partiToDisk(ret.device), ret.fstype, fs_uuid, ret.mountpoint, ret.opts, fs, bios_hints, efi_hints)
 
     @staticmethod
     def escape(in_str):

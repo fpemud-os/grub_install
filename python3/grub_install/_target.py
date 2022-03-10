@@ -22,7 +22,6 @@
 
 
 import os
-import re
 import glob
 import shutil
 import struct
@@ -338,7 +337,7 @@ class _Common:
 
         if p._mnt.fs_uuid is None:
             raise InstallError("no fsuuid found")
-        if Handy.isPlatformEfi(platform_type) and (p._mnt.mnt_dir != p._bootDir or p._mnt.fs != "fat"):
+        if Handy.isPlatformEfi(platform_type) and (p._mnt.mnt_dir != p._bootDir or p._mnt.grub_fs != "fat"):
             raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
         # get module list and hints
