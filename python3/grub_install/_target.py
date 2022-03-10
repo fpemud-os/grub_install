@@ -501,13 +501,13 @@ class _Bios:
         cls._checkDisk(dev, TargetError)
         with open(dev, "rb") as f:
             tmpBootBuf = f.read(len(bootBuf))
-            tmpRestBuf = f.read(cls._getCoreImgMaxSize() - len(bootBuf))
+            tmpRestBuf = f.read(cls._getCoreBufMaxSize() - len(bootBuf))
 
         # boot.img and core.img is not installed
         if tmpBootBuf == cls._getAllZeroBootBuf(tmpBootBuf) and is_buffer_all_zero(tmpRestBuf):
             raise TargetError("boot.img and core.img are not installed to disk")
 
-        # prepare bootBuf
+        # compare boot.img
         if True:
             # see comment in cls.install_into_mbr()
             s, e = Grub.BOOT_MACHINE_BPB_START, Grub.BOOT_MACHINE_BPB_END
@@ -529,9 +529,9 @@ class _Bios:
             s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
             bootBuf[s:e] = tmpBootBuf[s:e]
 
-        # compare boot.img
-        if tmpBootBuf != bootBuf:
-            raise TargetError("invalid MBR record content")
+            # do compare
+            if tmpBootBuf != bootBuf:
+                raise TargetError("invalid MBR record content")
 
         # compare core.img
         if tmpRestBuf[:len(coreBuf)] == coreBuf:
@@ -598,7 +598,7 @@ class _Bios:
                     s, e = Grub.BOOT_MACHINE_WINDOWS_NT_MAGIC, Grub.BOOT_MACHINE_PART_END
                     bootBuf[s:e] = tmpBootBuf[s:e]
 
-            # encode core.img
+            # prepare coreBuf
             if bAddRsCodes:
                 coreBuf = cls._getRsEncodedCoreBuf(coreBuf, Handy.isPlatformBigEndianOrLittleEndian(platform_type))
 
@@ -606,7 +606,7 @@ class _Bios:
             f.seek(0)
             f.write(bootBuf)
             f.write(coreBuf)
-            for i in range(0, cls._getCoreImgMaxSize() - len(coreBuf) - len(bootBuf)):
+            for i in range(0, cls._getCoreBufMaxSize() - len(coreBuf) - len(bootBuf)):
                 f.write(b'\x00')
 
         # fill custom attributes
@@ -627,7 +627,7 @@ class _Bios:
             # write up to cls._getCoreImgMaxSize()
             f.seek(0)
             f.write(allZeroBootBuf)
-            for i in range(0, cls._getCoreImgMaxSize() - len(allZeroBootBuf)):
+            for i in range(0, cls._getCoreBufMaxSize() - len(allZeroBootBuf)):
                 f.write(b'\x00')
 
     @staticmethod
@@ -648,8 +648,12 @@ class _Bios:
             raise CompareSourceError("redundant file %s found" % (rest_files[0]))
 
     @staticmethod
-    def _getCoreImgMaxSize():
+    def _getCoreBufMaxSize():
         return Grub.DISK_SECTOR_SIZE * 1024
+
+    @staticmethod
+    def _getCoreBufPossibleSize(coreBuf):
+        return (len(coreBuf) + Grub.DISK_SECTOR_SIZE - 1) // Grub.DISK_SECTOR_SIZE * Grub.DISK_SECTOR_SIZE * 2
 
     @classmethod
     def _checkDisk(cls, dev, exceptionClass):
@@ -674,7 +678,7 @@ class _Bios:
                         raise exceptionClass("'%s' must have no partition" % (dev))
                     else:
                         assert False
-                if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreImgMaxSize():
+                if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreBufMaxSize():
                     if exceptionClass is not None:
                         raise exceptionClass("'%s' has no MBR gap or its MBR gap is too small" % (dev))
                     else:
@@ -700,7 +704,7 @@ class _Bios:
         if not os.path.exists(coreImgFile):
             raise exceptionClass("'%s' does not exist" % (coreImgFile))
         coreBuf = pathlib.Path(coreImgFile).read_bytes()
-        if not (Grub.DISK_SECTOR_SIZE <= len(coreBuf) <= cls._getCoreImgMaxSize()):
+        if not (Grub.DISK_SECTOR_SIZE <= cls._getCoreBufPossibleSize(coreBuf) <= cls._getCoreBufMaxSize()):
             raise exceptionClass("the size of '%s' is invalid" % (coreImgFile))
         return coreBuf
 
@@ -718,16 +722,16 @@ class _Bios:
 
         return bytes(allZeroBootBuf)
 
-    @staticmethod
-    def _getRsEncodedCoreBuf(coreBuf, bigOrLittleEndian):
-        fstr = ">H" if bigOrLittleEndian else "<H"
-        noRsLen = struct.unpack_from(fstr, coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH)[0]
+    @classmethod
+    def _getRsEncodedCoreBuf(cls, coreBuf, bigOrLittleEndian):
+        noRsLen = struct.unpack_from(">H" if bigOrLittleEndian else "<H",
+                                     coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH)[0]
         if noRsLen == 0xFFFF:
             raise InstallError("core.img version mismatch")
 
-        fstr = ">I" if bigOrLittleEndian else "<I"
-        newLen = (len(coreBuf) + Grub.DISK_SECTOR_SIZE - 1) // Grub.DISK_SECTOR_SIZE * Grub.DISK_SECTOR_SIZE * 2
-        struct.pack_info(fstr, coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY, newLen)
+        newLen = cls._getCoreBufPossibleSize(coreBuf)
+        struct.pack_info(">I" if bigOrLittleEndian else "<I",
+                         coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY, newLen)
 
         noRsLen += Grub.DISK_SECTOR_SIZE
         rsc = reedsolo.RSCodec(newLen - len(coreBuf))
