@@ -27,7 +27,7 @@ import pathlib
 import tempfile
 import subprocess
 from ._util import PartiUtil
-from ._const import PlatformType, Mnt
+from ._const import PlatformType, MountPoint
 
 
 class Handy:
@@ -300,7 +300,7 @@ class Grub:
         except subprocess.CalledProcessError:
             efi_hints = ""
 
-        return Mnt(ret.device, PartiUtil.partiToDisk(ret.device), ret.fstype, fs_uuid, ret.mountpoint, ret.opts, fs, bios_hints, efi_hints)
+        return MountPoint(ret.device, PartiUtil.partiToDisk(ret.device), ret.fstype, fs_uuid, ret.mountpoint, ret.opts, fs, bios_hints, efi_hints)
 
     @staticmethod
     def escape(in_str):

@@ -77,7 +77,7 @@ class PlatformInstallInfo:
         return "<%s %r>" % (self.__class__.__name__, self.__dict__)
 
 
-class Mnt:
+class MountPoint:
 
     def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, grub_fs, grub_bios_hints, grub_efi_hints):
         self.dev = dev
