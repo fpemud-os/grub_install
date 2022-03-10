@@ -150,6 +150,9 @@ class Grub:
 
     KERNEL_I386_PC_LINK_ADDR = 0x9000
 
+    # Offset of reed_solomon_redundancy.
+    KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY = 0x10
+
     # Offset of field holding no reed solomon length.
     KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH = 0x14
 

@@ -25,8 +25,10 @@ import os
 import re
 import glob
 import shutil
+import struct
 import parted
 import pathlib
+import reedsolo
 from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._errors import TargetError, InstallError, CompareSourceError
@@ -495,15 +497,14 @@ class _Bios:
         coreBuf = cls._checkAndReadCoreImg(platform_type, bootDir, TargetError)
 
         # read MBR and MBR-gap
-        tmpBootBuf, tmpCoreBuf, tmpRestBuf = None, None, None
+        tmpBootBuf, tmpRestBuf = None, None
         cls._checkDisk(dev, TargetError)
         with open(dev, "rb") as f:
             tmpBootBuf = f.read(len(bootBuf))
-            tmpCoreBuf = f.read(len(coreBuf))
-            tmpRestBuf = f.read(cls._getCoreImgMaxSize() - len(coreBuf) - len(bootBuf))
+            tmpRestBuf = f.read(cls._getCoreImgMaxSize() - len(bootBuf))
 
         # boot.img and core.img is not installed
-        if tmpBootBuf == cls._getAllZeroBootBuf(tmpBootBuf) and is_buffer_all_zero(tmpCoreBuf) and is_buffer_all_zero(tmpRestBuf):
+        if tmpBootBuf == cls._getAllZeroBootBuf(tmpBootBuf) and is_buffer_all_zero(tmpRestBuf):
             raise TargetError("boot.img and core.img are not installed to disk")
 
         # prepare bootBuf
@@ -531,8 +532,14 @@ class _Bios:
         # compare
         if tmpBootBuf != bootBuf:
             raise TargetError("invalid MBR record content")
-        if tmpCoreBuf != coreBuf:
-            raise TargetError("invalid on-disk core.img content")
+        if tmpRestBuf[:len(coreBuf)] == coreBuf:
+            bRsCodes = False
+        else:
+            coreBuf = cls._getRsEncodedCoreBuf(coreBuf, Handy.isPlatformBigEndianOrLittleEndian(platform_type))
+            if tmpRestBuf[:len(coreBuf)] == coreBuf:
+                bRsCodes = True
+            else:
+                raise TargetError("invalid on-disk core.img content")
         if not is_buffer_all_zero(tmpRestBuf):
             raise TargetError("disk content after core.img should be all zero")
 
@@ -540,7 +547,7 @@ class _Bios:
         platform_install_info.mbr_installed = True
         platform_install_info.allow_floppy = bAllowFloppy
         platform_install_info.bpb = bBpb
-        platform_install_info.rs_codes = False
+        platform_install_info.rs_codes = bRsCodes
         return
 
     @classmethod
@@ -556,7 +563,7 @@ class _Bios:
 
     @classmethod
     def install_with_mbr(cls, platform_type, platform_install_info, source, bootDir, dev, bFloppyOrHdd, bAllowFloppy, bBpb, bAddRsCodes):
-        assert not bFloppyOrHdd and not bAllowFloppy and not bAddRsCodes        # FIXME
+        assert not bFloppyOrHdd and not bAllowFloppy        # FIXME
 
         # copy boot.img
         shutil.copy(os.path.join(source.get_platform_directory(platform_type), "boot.img"), os.path.join(bootDir, "grub", platform_type.value))
@@ -590,32 +597,7 @@ class _Bios:
 
             # encode core.img
             if bAddRsCodes:
-
-    grub_size_t no_rs_length;
-    no_rs_length = grub_target_to_host16 
-      (grub_get_unaligned16 (core_img
-			     + GRUB_DISK_SECTOR_SIZE
-			     + GRUB_KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH));
-
-    if (no_rs_length == 0xffff)
-      grub_util_error ("%s", _("core.img version mismatch"));
-
-    if (add_rs_codes)
-      {
-	grub_set_unaligned32 ((core_img + GRUB_DISK_SECTOR_SIZE
-			       + GRUB_KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY),
-			      grub_host_to_target32 (nsec * GRUB_DISK_SECTOR_SIZE - core_size));
-
-	void *tmp = xmalloc (core_size);
-	grub_memcpy (tmp, core_img, core_size);
-	grub_reed_solomon_add_redundancy (core_img + no_rs_length + GRUB_DISK_SECTOR_SIZE,
-					  core_size - no_rs_length - GRUB_DISK_SECTOR_SIZE,
-					  nsec * GRUB_DISK_SECTOR_SIZE
-					  - core_size);
-	assert (grub_memcmp (tmp, core_img, core_size) == 0);
-	free (tmp);
-      }
-
+                coreBuf = cls._getRsEncodedCoreBuf(coreBuf, Handy.isPlatformBigEndianOrLittleEndian(platform_type))
 
             # write up to cls._getCoreImgMaxSize()
             f.seek(0)
@@ -732,6 +714,21 @@ class _Bios:
         allZeroBootBuf[s:e] = onDiskBootBuf[s:e]
 
         return bytes(allZeroBootBuf)
+
+    @staticmethod
+    def _getRsEncodedCoreBuf(coreBuf, bigOrLittleEndian):
+        fstr = ">H" if bigOrLittleEndian else "<H"
+        noRsLen = struct.unpack_from(fstr, coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_NO_REED_SOLOMON_LENGTH)[0]
+        if noRsLen == 0xFFFF:
+            raise InstallError("core.img version mismatch")
+
+        fstr = ">I" if bigOrLittleEndian else "<I"
+        newLen = (len(coreBuf) + Grub.DISK_SECTOR_SIZE - 1) // Grub.DISK_SECTOR_SIZE * Grub.DISK_SECTOR_SIZE * 2
+        struct.pack_info(fstr, coreBuf, Grub.DISK_SECTOR_SIZE + Grub.KERNEL_I386_PC_REED_SOLOMON_REDUNDANCY, newLen)
+
+        noRsLen += Grub.DISK_SECTOR_SIZE
+        rsc = reedsolo.RSCodec(newLen - len(coreBuf))
+        return coreBuf[:noRsLen] + rsc.encode(coreBuf[noRsLen:])
 
 
 class _Efi:
