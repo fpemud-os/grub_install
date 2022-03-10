@@ -673,9 +673,9 @@ class _Bios:
                     else:
                         assert False
                 pPartiList = pDisk.getPrimaryPartitions()
-                if len(pPartiList) > 0:
+                if len(pPartiList) == 0:
                     if exceptionClass is not None:
-                        raise exceptionClass("'%s' must have no partition" % (dev))
+                        raise exceptionClass("'%s' have no partition" % (dev))
                     else:
                         assert False
                 if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreBufMaxSize():
