@@ -29,7 +29,7 @@ import struct
 import parted
 import pathlib
 import reedsolo
-from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero
+from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero, PartiUtil
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._errors import TargetError, InstallError, CompareSourceError
 from ._handy import Handy, Grub
@@ -657,7 +657,7 @@ class _Bios:
 
     @classmethod
     def _checkDisk(cls, dev, exceptionClass):
-        if not re.fullmatch(".*[0-9]+$", dev):
+        if not PartiUtil.isDiskOrParti(dev):
             if exceptionClass is not None:
                 raise exceptionClass("'%s' must be a disk" % (dev))
             else:
