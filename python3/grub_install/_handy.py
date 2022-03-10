@@ -22,12 +22,11 @@
 
 
 import os
-import psutil
 import pathlib
 import tempfile
 import subprocess
 from ._util import PartiUtil
-from ._const import PlatformType, MountPoint
+from ._const import PlatformType
 
 
 class Handy:
@@ -273,34 +272,50 @@ class Grub:
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
-    def probeMnt(dir):
-        ret = [p for p in psutil.disk_partitions() if dir == p.mountpoint]
-        if len(ret) == 0:
-            return None
-        assert len(ret) == 1
-        ret = ret[0]
+    def probeMnt(mnt, rootfs_or_boot):
+        # mnt should be an psutil.mountpoint compatible object
 
         try:
-            fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", ret.device], universal_newlines=True).rstrip("\n")
+            fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", mnt.device], universal_newlines=True).rstrip("\n")
         except subprocess.CalledProcessError:
             fs = None
 
         try:
-            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs", "-d", ret.device], universal_newlines=True).rstrip("\n")
+            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs", "-d", mnt.device], universal_newlines=True).rstrip("\n")
         except subprocess.CalledProcessError:
             fs_uuid = None
 
         try:
-            bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", ret.device], universal_newlines=True).rstrip("\n")
+            bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", mnt.device], universal_newlines=True).rstrip("\n")
         except subprocess.CalledProcessError:
             bios_hints = ""
 
         try:
-            efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", ret.device], universal_newlines=True).rstrip("\n")
+            efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", mnt.device], universal_newlines=True).rstrip("\n")
         except subprocess.CalledProcessError:
             efi_hints = ""
 
-        return MountPoint(ret.device, PartiUtil.partiToDisk(ret.device), ret.fstype, fs_uuid, ret.mountpoint, ret.opts, fs, bios_hints, efi_hints)
+        class MountPoint:
+
+            def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
+                self.dev = dev
+                self.disk = disk
+                self.fs = fs
+                self.fs_uuid = fs_uuid
+                self.mnt_dir = mnt_dir
+                self.mnt_opts = mnt_opts
+                self.grub_fs = grub_fs
+                self.grub_bios_hints = grub_bios_hints
+                self.grub_efi_hints = grub_efi_hints
+                self._rootfs_or_boot = rootfs_or_boot
+
+            def is_rootfs_mount_point(self):
+                return self._rootfs_or_boot
+
+            def is_boot_mount_point(self):
+                return not self._rootfs_or_boot
+
+        return MountPoint(mnt.device, PartiUtil.partiToDisk(mnt.device), mnt.fstype, fs_uuid, mnt.mountpoint, mnt.opts, fs, bios_hints, efi_hints, rootfs_or_boot)
 
     @staticmethod
     def escape(in_str):

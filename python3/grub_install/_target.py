@@ -47,19 +47,14 @@ class Target:
 
         # target specific variables
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            self._rootfsDir = kwargs.get("rootfs_dir", None)
-            if "boot_dir" in kwargs:
-                self._bootDir = kwargs["boot_dir"]
+            rootfsMnt = kwargs["rootfs_mount_point"]
+            bootMnt = kwargs.get("boot_mount_point", None)
+            if bootMnt is None:
+                self._mnt = Grub.probeMnt(rootfsMnt, True)
+                self._bootDir = os.path.join(self._mnt.mnt_dir, "boot")
             else:
-                self._bootDir = os.path.join(self._rootfsDir, "boot")
-            if self._rootfsDir is not None:
-                self._mnt = Grub.probeMnt(self._rootfsDir)
-                if self._mnt is None:
-                    raise TargetError("no mount point found for rootfs directory")
-            else:
-                self._mnt = Grub.probeMnt(self._bootDir)
-                if self._mnt is None:
-                    raise TargetError("no mount point found for boot directory")
+                self._mnt = Grub.probeMnt(bootMnt, False)
+                self._bootDir = self._mnt.mnt_dir
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
             self._iso = kwargs.get["obj"]
@@ -337,7 +332,7 @@ class _Common:
 
         if p._mnt.fs_uuid is None:
             raise InstallError("no fsuuid found")
-        if Handy.isPlatformEfi(platform_type) and (p._mnt.mnt_dir != p._bootDir or p._mnt.grub_fs != "fat"):
+        if Handy.isPlatformEfi(platform_type) and (not p._mnt.is_boot_mount_point() or p._mnt.grub_fs != "fat"):
             raise InstallError("%s doesn't look like an EFI partition" % (p._bootDir))
 
         # get module list and hints
