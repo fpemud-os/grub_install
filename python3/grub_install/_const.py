@@ -66,9 +66,9 @@ class PlatformType(enum.Enum):
 class PlatformInstallInfo:
 
     class Status(enum.Enum):
-        PERFECT = enum.auto()
-        WITH_FLAWS = enum.auto()
-        NOT_EXIST = enum.auto()
+        NORMAL = enum.auto()
+        NOT_VALID = enum.auto()
+        NOT_INSTALLED = enum.auto()
 
     def __init__(self):
         self.status = None

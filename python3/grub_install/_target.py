@@ -78,7 +78,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
+                        self._platforms[k] = _newNotValidPlatformInstallInfo(str(e))
             elif self._targetType == TargetType.PYCDLIB_OBJ:
                 _PyCdLib.init_platforms(self)
                 for k, v in self._platforms.items():
@@ -92,7 +92,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
+                        self._platforms[k] = _newNotValidPlatformInstallInfo(str(e))
             elif self._targetType == TargetType.ISO_DIR:
                 _Common.init_platforms(self)
                 for k, v in self._platforms.items():
@@ -104,7 +104,7 @@ class Target:
                         else:
                             assert False
                     except TargetError as e:
-                        self._platforms[k] = _newWithFlawsPlatformInstallInfo(str(e))
+                        self._platforms[k] = _newNotValidPlatformInstallInfo(str(e))
             else:
                 assert False
 
@@ -118,7 +118,7 @@ class Target:
 
     @property
     def platforms(self):
-        return [k for k, v in self._platforms.items() if v.status == PlatformInstallInfo.Status.PERFECT]
+        return [k for k, v in self._platforms.items() if v.status == PlatformInstallInfo.Status.NORMAL]
 
     def get_platform_install_info(self, platform_type):
         assert isinstance(platform_type, PlatformType)
@@ -126,7 +126,7 @@ class Target:
         if platform_type in self._platforms:
             return self._platforms[platform_type]
         else:
-            return _newNotExistPlatformInstallInfo()
+            return _newNotInstalledPlatformInstallInfo()
 
     def install_platform(self, platform_type, source, **kwargs):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
@@ -134,7 +134,7 @@ class Target:
         assert isinstance(source, Source)
 
         ret = PlatformInstallInfo()
-        ret.status = PlatformInstallInfo.Status.PERFECT
+        ret.status = PlatformInstallInfo.Status.NORMAL
 
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             _Common.install_platform(self, platform_type, source,
@@ -319,7 +319,7 @@ class _Common:
             for fn in os.listdir(grubDir):
                 try:
                     obj = PlatformInstallInfo()
-                    obj.status = PlatformInstallInfo.Status.PERFECT
+                    obj.status = PlatformInstallInfo.Status.NORMAL
                     p._platforms[PlatformType(fn)] = obj
                 except ValueError:
                     pass
@@ -802,16 +802,16 @@ class _PyCdLib:
         pass
 
 
-def _newWithFlawsPlatformInstallInfo(reason):
+def _newNotValidPlatformInstallInfo(reason):
     ret = PlatformInstallInfo()
-    ret.status = PlatformInstallInfo.Status.WITH_FLAWS
+    ret.status = PlatformInstallInfo.Status.NOT_VALID
     ret.reason = reason
     return ret
 
 
-def _newNotExistPlatformInstallInfo():
+def _newNotInstalledPlatformInstallInfo():
     ret = PlatformInstallInfo()
-    ret.status = PlatformInstallInfo.Status.NOT_EXIST
+    ret.status = PlatformInstallInfo.Status.NOT_INSTALLED
     return ret
 
 
