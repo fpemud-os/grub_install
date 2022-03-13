@@ -64,8 +64,9 @@ def force_mkdir(path, clear=False):
 
 
 def rmdir_if_empty(path):
-    if len(os.listdir(path)) == 0:
-        os.rmdir(path)
+    if os.path.exists(path):
+        if len(os.listdir(path)) == 0:
+            os.rmdir(path)
 
 
 def truncate_dir(path):
