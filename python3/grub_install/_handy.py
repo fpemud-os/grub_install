@@ -198,7 +198,7 @@ class Grub:
             assert False
 
         # fs module
-        moduleList.append(mnt.fs)
+        moduleList.append(mnt.grub_fs)
         moduleList.append("search_fs_uuid")
 
         return (moduleList, hints)
