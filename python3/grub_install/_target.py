@@ -74,7 +74,7 @@ class Target:
                         if k == PlatformType.I386_PC:
                             _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._mnt.disk)
                         elif Handy.isPlatformEfi(k):
-                            _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                            _Efi.fill_platform_install_info(k, v, self._targetType, self._mnt.mnt_dir, self._bootDir)
                         else:
                             assert False
                     except TargetError as e:
@@ -100,7 +100,7 @@ class Target:
                         if k == PlatformType.I386_PC:
                             _Bios.fill_platform_install_info_without_mbr(k, v, self._bootDir)
                         elif Handy.isPlatformEfi(k):
-                            _Efi.fill_platform_install_info(k, v, self._targetType, self._bootDir)
+                            _Efi.fill_platform_install_info(k, v, self._targetType, self._dir, self._bootDir)
                         else:
                             assert False
                     except TargetError as e:
@@ -147,7 +147,8 @@ class Target:
                                        kwargs.get("bpb", True),                                         # bBpb
                                        kwargs.get("rs_codes", True))                                    # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
+                _Efi.install_info_efi_dir(platform_type, ret, self._mnt.mnt_dir, self._bootDir,
+                                          kwargs.get("use_rootfs_as_esp", False),                       # bUseRootfsAsEsp
                                           kwargs.get("removable", False),                               # bRemovable
                                           kwargs.get("update_nvram", True))                             # bUpdateNvram
             else:
@@ -162,7 +163,7 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 _Bios.install_without_mbr(platform_type, ret, source, self._bootDir)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.install_info_efi_dir(platform_type, ret, self._bootDir,
+                _Efi.install_info_efi_dir(platform_type, ret, self._dir, self._bootDir,
                                           kwargs.get("removable", False),                               # bRemovable
                                           False)                                                        # bUpdateNvram
             else:
@@ -185,7 +186,7 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 _Bios.remove_from_mbr(platform_type, self._mnt.disk)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._mnt.mnt_dir, self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -196,7 +197,7 @@ class Target:
             if platform_type == PlatformType.I386_PC:
                 pass
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._dir, self._bootDir)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -264,7 +265,15 @@ class Target:
             self.remove_platform(k)
 
         # remove remaining files
-        _Efi.remove_remaining_crufts(self._bootDir)
+        if self._targetType == TargetType.MOUNTED_HDD_DEV:
+            _Efi.remove_remaining_crufts(self._mnt.mnt_dir, self._bootDir)
+        elif self._targetType == TargetType.PYCDLIB_OBJ:
+            # FIXME
+            assert False
+        elif self._targetType == TargetType.ISO_DIR:
+            _Efi.remove_remaining_crufts(self._dir, self._bootDir)
+        else:
+            assert False
         _Common.remove_remaining_crufts(self)
 
     def compare_source(self, source):
@@ -726,9 +735,18 @@ class _Efi:
     """We only support removable, and not upgrading NVRAM"""
 
     @staticmethod
-    def fill_platform_install_info(platform_type, platform_install_info, target_type, bootDir):
+    def fill_platform_install_info(platform_type, platform_install_info, target_type, rootfsDir, bootDir):
+        efiDirRootfs = os.path.join(rootfsDir, "EFI")
+        efiDirBoot = os.path.join(bootDir, "EFI")
+        if os.path.exists(efiDirRootfs):
+            if os.path.exists(efiDirBoot):
+                raise TargetError("both %s and %s exist" % (efiDirRootfs, efiDirBoot))
+            efiDir = efiDirRootfs
+        else:
+            efiDir = efiDirBoot
+
         coreFullfn = os.path.join(bootDir, "grub", platform_type.value, Grub.getCoreImgNameAndTarget(platform_type)[0])
-        efiFullfn = os.path.join(bootDir, "EFI", "BOOT", Handy.getStandardEfiFilename(platform_type))
+        efiFullfn = os.path.join(efiDir, "BOOT", Handy.getStandardEfiFilename(platform_type))
 
         if not os.path.exists(coreFullfn):
             raise TargetError("%s does not exist" % (coreFullfn))
@@ -737,16 +755,20 @@ class _Efi:
         if not compare_files(coreFullfn, efiFullfn):
             raise TargetError("%s and %s are different" % (coreFullfn, efiFullfn))
 
+        platform_install_info.esp_is_rootfs = (efiDir == efiDirRootfs)
         platform_install_info.removable = True
         platform_install_info.nvram = False
 
     @staticmethod
-    def install_info_efi_dir(platform_type, platform_install_info, bootDir, bRemovable, bUpdateNvram):
+    def install_info_efi_dir(platform_type, platform_install_info, rootfsDir, bootDir, bUseRootfsAsEsp, bRemovable, bUpdateNvram):
         assert bRemovable and not bUpdateNvram          # FIXME
 
         grubPlatDir = os.path.join(bootDir, "grub", platform_type.value)
-        efiDir = os.path.join(bootDir, "EFI")
-        efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
+        if bUseRootfsAsEsp:
+            efiDir = os.path.join(rootfsDir, "EFI")
+        else:
+            efiDir = os.path.join(bootDir, "EFI")
+        efiDirLv2 = os.path.join(efiDir, "BOOT")
         efiFn = Handy.getStandardEfiFilename(platform_type)
 
         # create efi dir
@@ -760,26 +782,22 @@ class _Efi:
         shutil.copy(os.path.join(grubPlatDir, coreName), os.path.join(efiDirLv2, efiFn))
 
         # fill custom attributes
+        platform_install_info.esp_is_rootfs = bUseRootfsAsEsp
         platform_install_info.removable = bRemovable
         platform_install_info.nvram = bUpdateNvram
 
     @staticmethod
-    def remove_from_efi_dir(platform_type, bootDir):
-        efiDir = os.path.join(bootDir, "EFI")
-        efiDirLv2 = os.path.join(bootDir, "EFI", "BOOT")
+    def remove_from_efi_dir(platform_type, platform_install_info, rootfsDir, bootDir):
         efiFn = Handy.getStandardEfiFilename(platform_type)
-
-        # remove efi file
-        force_rm(os.path.join(efiDirLv2, efiFn))
-
-        # remove empty level 2 efi dir
-        rmdir_if_empty(efiDirLv2)
-
-        # remove empty efi dir
-        rmdir_if_empty(efiDir)
+        for efiDir in [os.path.join(rootfsDir, "EFI"), os.path.join(bootDir, "EFI")]:
+            efiDirLv2 = os.path.join(efiDir, "BOOT")
+            force_rm(os.path.join(efiDirLv2, efiFn))
+            rmdir_if_empty(efiDirLv2)
+            rmdir_if_empty(efiDir)
 
     @staticmethod
-    def remove_remaining_crufts(bootDir):
+    def remove_remaining_crufts(rootfsDir, bootDir):
+        force_rm(os.path.join(rootfsDir, "EFI"))
         force_rm(os.path.join(bootDir, "EFI"))
 
 
