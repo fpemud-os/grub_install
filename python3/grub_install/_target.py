@@ -256,19 +256,6 @@ class Target:
         force_rm(os.path.join(grubDir, "fonts"))
         force_rm(os.path.join(grubDir, "themes"))
 
-    def touch_env_file(self):
-        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
-
-        grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
-        if not os.path.exists(grubEnvFile):
-            Grub.createEnvBlkFile(grubEnvFile)
-
-    def remove_env_file(self):
-        assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
-
-        grubEnvFile = os.path.join(self._bootDir, "grub", "grubenv")
-        force_rm(grubEnvFile)
-
     def remove_all(self):
         assert self._mode in [TargetAccessMode.RW, TargetAccessMode.W]
 
