@@ -328,6 +328,7 @@ class _Common:
         # install module files
         # FIXME: install only required modules
         if True:
+            force_mkdir(grubDir)
             force_mkdir(platDirDst, clear=True)
 
             def __copy(fullfn, dstDir):
