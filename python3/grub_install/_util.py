@@ -69,11 +69,6 @@ def rmdir_if_empty(path):
             os.rmdir(path)
 
 
-def truncate_dir(path):
-    for fn in os.listdir(path):
-        force_rm(os.path.join(path, fn))
-
-
 def compare_file_and_content(filepath, content):
     if isinstance(content, str):
         return pathlib.Path(filepath).read_text() == content
