@@ -655,29 +655,23 @@ class _Bios:
                 assert False
 
         pDev = parted.getDevice(dev)
-        try:
-            pDisk = parted.newDisk(pDev)
-            try:
-                if pDisk.type != "msdos":
-                    if exceptionClass is not None:
-                        raise exceptionClass("'%s' must have a MBR partition table" % (dev))
-                    else:
-                        assert False
-                pPartiList = pDisk.getPrimaryPartitions()
-                if len(pPartiList) == 0:
-                    if exceptionClass is not None:
-                        raise exceptionClass("'%s' have no partition" % (dev))
-                    else:
-                        assert False
-                if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreBufMaxSize():
-                    if exceptionClass is not None:
-                        raise exceptionClass("'%s' has no MBR gap or its MBR gap is too small" % (dev))
-                    else:
-                        assert False
-            finally:
-                pDisk.destroy()
-        finally:
-            pDev.destroy()
+        pDisk = parted.newDisk(pDev)
+        if pDisk.type != "msdos":
+            if exceptionClass is not None:
+                raise exceptionClass("'%s' must have a MBR partition table" % (dev))
+            else:
+                assert False
+        pPartiList = pDisk.getPrimaryPartitions()
+        if len(pPartiList) == 0:
+            if exceptionClass is not None:
+                raise exceptionClass("'%s' have no partition" % (dev))
+            else:
+                assert False
+        if pPartiList[0].geometry.start * pDev.sectorSize < cls._getCoreBufMaxSize():
+            if exceptionClass is not None:
+                raise exceptionClass("'%s' has no MBR gap or its MBR gap is too small" % (dev))
+            else:
+                assert False
 
     @staticmethod
     def _checkAndReadBootImg(platform_type, bootDir, exceptionClass):
