@@ -266,7 +266,7 @@ class Grub:
             fs = None
 
         try:
-            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs", "-d", mnt.device], universal_newlines=True).rstrip("\n")
+            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs_uuid", "-d", mnt.device], universal_newlines=True).rstrip("\n")
         except subprocess.CalledProcessError:
             fs_uuid = None
 
