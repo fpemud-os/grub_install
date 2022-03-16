@@ -54,8 +54,11 @@ def force_mkdir(path, clear=False):
         os.remove(path)
         os.mkdir(path)
     elif os.path.isdir(path):
-        shutil.rmtree(path)
-        os.mkdir(path)
+        if clear:
+            shutil.rmtree(path)
+            os.mkdir(path)
+        else:
+            pass
     elif os.path.lexists(path):
         os.remove(path)             # other type of file, such as device node
         os.mkdir(path)
