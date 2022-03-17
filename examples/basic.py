@@ -17,3 +17,9 @@ print("target-access-mode: " + str(t.target_access_mode))
 
 for pt in grub_install.PlatformType:
     print("target-platform:    %-17s %s" % (pt.value, t.get_platform_install_info(pt)))
+
+s = grub_install.Source("/")
+try:
+    t.compare_with_source(s)
+except grub_install.CompareWithSourceError as e:
+    print("different with source: %s" % (e))
