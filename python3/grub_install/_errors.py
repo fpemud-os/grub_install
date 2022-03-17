@@ -29,7 +29,7 @@ class CopySourceError(Exception):
     pass
 
 
-class CompareSourceError(Exception):
+class CompareWithSourceError(Exception):
     pass
 
 

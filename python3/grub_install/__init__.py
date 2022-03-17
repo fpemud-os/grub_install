@@ -48,4 +48,4 @@ from ._errors import SourceError
 from ._errors import TargetError
 from ._errors import InstallError
 from ._errors import CopySourceError
-from ._errors import CompareSourceError
+from ._errors import CompareWithSourceError
