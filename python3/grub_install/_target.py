@@ -47,14 +47,10 @@ class Target:
 
         # target specific variables
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            rootfsMnt = kwargs["rootfs_mount_point"]
-            bootMnt = kwargs.get("boot_mount_point", None)
-            if bootMnt is None:
-                self._mnt = Grub.probeMnt(rootfsMnt, True)
-                self._bootDir = os.path.join(self._mnt.mnt_dir, "boot")
-            else:
-                self._mnt = Grub.probeMnt(bootMnt, False)
-                self._bootDir = self._mnt.mnt_dir
+            self._rootfsMnt = kwargs["rootfs_mount_point"]
+            self._bootMnt = kwargs.get("boot_mount_point", None)
+            self._bootDir = self._bootMnt.mountpoint if self._bootMnt is not None else self._rootfsMnt.mountpoint
+            self._disk = self._bootMnt.disk if self._bootMnt is not None else self._rootfsMnt.disk
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]
             self._iso = kwargs.get["obj"]
@@ -72,9 +68,9 @@ class Target:
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._mnt.disk)
+                            _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._disk)
                         elif Handy.isPlatformEfi(k):
-                            _Efi.fill_platform_install_info(k, v, self._targetType, self._mnt.mnt_dir, self._bootDir)
+                            _Efi.fill_platform_install_info(k, v, self._targetType, self._rootfsMnt.mountpoint, self._bootMnt.mountpoint)
                         else:
                             assert False
                     except TargetError as e:
@@ -141,13 +137,13 @@ class Target:
                                      tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_with_mbr(platform_type, ret, source, self._bootDir, self._mnt.disk,
+                _Bios.install_with_mbr(platform_type, ret, source, self._bootDir, self._disk,
                                        False,                                                           # bFloppyOrHdd
                                        kwargs.get("allow_floppy", False),                               # bAllowFloppy
                                        kwargs.get("bpb", True),                                         # bBpb
                                        kwargs.get("rs_codes", True))                                    # bAddRsCodes
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.install_info_efi_dir(platform_type, ret, self._mnt.mnt_dir, self._bootDir,
+                _Efi.install_info_efi_dir(platform_type, ret, self._rootfsMnt.mountpoint, self._bootMnt.mountpoint,
                                           kwargs.get("use_rootfs_as_esp", False),                       # bUseRootfsAsEsp
                                           kwargs.get("removable", False),                               # bRemovable
                                           kwargs.get("update_nvram", True))                             # bUpdateNvram
@@ -184,9 +180,9 @@ class Target:
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_from_mbr(platform_type, self._mnt.disk)
+                _Bios.remove_from_mbr(platform_type, self._disk)
             elif Handy.isPlatformEfi(platform_type):
-                _Efi.remove_from_efi_dir(platform_type, self._mnt.mnt_dir, self._bootDir)
+                _Efi.remove_from_efi_dir(platform_type, self._rootfsMnt.mountpoint, self._bootMnt.mountpoint)
             else:
                 assert False
             _Common.remove_platform(self, platform_type)
@@ -266,7 +262,7 @@ class Target:
 
         # remove remaining files
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
-            _Efi.remove_remaining_crufts(self._mnt.mnt_dir, self._bootDir)
+            _Efi.remove_remaining_crufts(self._rootfsMnt.mountpoint, self._bootDir)
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             # FIXME
             assert False
