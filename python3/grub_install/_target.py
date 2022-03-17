@@ -781,7 +781,7 @@ class _Efi:
         platform_install_info.nvram = bUpdateNvram
 
     @staticmethod
-    def remove_from_efi_dir(platform_type, platform_install_info, rootfsDir, bootDir):
+    def remove_from_efi_dir(platform_type, rootfsDir, bootDir):
         efiFn = Handy.getStandardEfiFilename(platform_type)
         for efiDir in [os.path.join(rootfsDir, "EFI"), os.path.join(bootDir, "EFI")]:
             efiDirLv2 = os.path.join(efiDir, "BOOT")
