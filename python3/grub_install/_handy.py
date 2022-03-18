@@ -282,17 +282,30 @@ class Grub:
 
         class MountPoint:
 
-            def __init__(self, dev, disk, fs, fs_uuid, mnt_dir, mnt_opts, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
-                self.dev = dev
-                self.disk = disk
-                self.fs = fs
+            def __init__(self, p, fs_uuid, disk, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
+                self._p = p
                 self.fs_uuid = fs_uuid
-                self.mnt_dir = mnt_dir
-                self.mnt_opts = mnt_opts
+                self.disk = disk
                 self.grub_fs = grub_fs
                 self.grub_bios_hints = grub_bios_hints
                 self.grub_efi_hints = grub_efi_hints
                 self._rootfs_or_boot = rootfs_or_boot
+
+            @property
+            def device(self):
+                return self._p.device
+
+            @property
+            def mountpoint(self):
+                return self._p.mountpoint
+
+            @property
+            def fstype(self):
+                return self._p.fstype
+
+            @property
+            def opts(self):
+                return self._p.opts
 
             def is_rootfs_mount_point(self):
                 return self._rootfs_or_boot
@@ -300,7 +313,7 @@ class Grub:
             def is_boot_mount_point(self):
                 return not self._rootfs_or_boot
 
-        return MountPoint(mnt.device, PartiUtil.partiToDisk(mnt.device), mnt.fstype, fs_uuid, mnt.mountpoint, mnt.opts, fs, bios_hints, efi_hints, rootfs_or_boot)
+        return MountPoint(mnt, fs_uuid, PartiUtil.partiToDisk(mnt.device), fs, bios_hints, efi_hints, rootfs_or_boot)
 
     @staticmethod
     def escape(in_str):
