@@ -280,41 +280,42 @@ class Grub:
         except subprocess.CalledProcessError:
             efi_hints = ""
 
-        class GrubMountPoint:
-
-            def __init__(self, p, fs_uuid, disk, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
-                self._p = p
-                self.fs_uuid = fs_uuid
-                self.disk = disk
-                self.grub_fs = grub_fs
-                self.grub_bios_hints = grub_bios_hints
-                self.grub_efi_hints = grub_efi_hints
-                self._rootfs_or_boot = rootfs_or_boot
-
-            @property
-            def device(self):
-                return self._p.device
-
-            @property
-            def mountpoint(self):
-                return self._p.mountpoint
-
-            @property
-            def fstype(self):
-                return self._p.fstype
-
-            @property
-            def opts(self):
-                return self._p.opts
-
-            def is_rootfs_mount_point(self):
-                return self._rootfs_or_boot
-
-            def is_boot_mount_point(self):
-                return not self._rootfs_or_boot
-
         return GrubMountPoint(mnt, fs_uuid, PartiUtil.partiToDisk(mnt.device), fs, bios_hints, efi_hints, rootfs_or_boot)
 
     @staticmethod
     def escape(in_str):
         return in_str.replace('\'', "'\\''")
+
+
+class GrubMountPoint:
+
+    def __init__(self, p, fs_uuid, disk, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
+        self._p = p
+        self.fs_uuid = fs_uuid
+        self.disk = disk
+        self.grub_fs = grub_fs
+        self.grub_bios_hints = grub_bios_hints
+        self.grub_efi_hints = grub_efi_hints
+        self._rootfs_or_boot = rootfs_or_boot
+
+    @property
+    def device(self):
+        return self._p.device
+
+    @property
+    def mountpoint(self):
+        return self._p.mountpoint
+
+    @property
+    def fstype(self):
+        return self._p.fstype
+
+    @property
+    def opts(self):
+        return self._p.opts
+
+    def is_rootfs_mount_point(self):
+        return self._rootfs_or_boot
+
+    def is_boot_mount_point(self):
+        return not self._rootfs_or_boot
