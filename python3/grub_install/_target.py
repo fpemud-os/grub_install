@@ -72,7 +72,7 @@ class Target:
                 for k, v in self._platforms.items():
                     try:
                         if k == PlatformType.I386_PC:
-                            _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._mnt.device)
+                            _Bios.fill_platform_install_info_with_mbr(k, v, self._bootDir, self._mnt.disk)
                         elif Handy.isPlatformEfi(k):
                             _Efi.fill_platform_install_info(k, v, self._targetType, self._mnt.mountpoint, self._bootDir)
                         else:
@@ -141,7 +141,7 @@ class Target:
                                      tmpDir=self._tmpDir,
                                      debugImage=kwargs.get("debug_image", None))
             if platform_type == PlatformType.I386_PC:
-                _Bios.install_with_mbr(platform_type, ret, source, self._bootDir, self._mnt.device,
+                _Bios.install_with_mbr(platform_type, ret, source, self._bootDir, self._mnt.disk,
                                        False,                                                           # bFloppyOrHdd
                                        kwargs.get("allow_floppy", False),                               # bAllowFloppy
                                        kwargs.get("bpb", True),                                         # bBpb
@@ -184,7 +184,7 @@ class Target:
         # do remove
         if self._targetType == TargetType.MOUNTED_HDD_DEV:
             if platform_type == PlatformType.I386_PC:
-                _Bios.remove_from_mbr(platform_type, self._mnt.device)
+                _Bios.remove_from_mbr(platform_type, self._mnt.disk)
             elif Handy.isPlatformEfi(platform_type):
                 _Efi.remove_from_efi_dir(platform_type, self._mnt.mountpoint, self._bootDir)
             else:
