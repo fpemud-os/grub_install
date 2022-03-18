@@ -31,7 +31,7 @@ import reedsolo
 from ._util import rel_path, force_rm, force_mkdir, rmdir_if_empty, compare_file_and_content, compare_files, compare_directories, is_buffer_all_zero, PartiUtil
 from ._const import TargetType, TargetAccessMode, PlatformType, PlatformInstallInfo
 from ._errors import TargetError, InstallError, CompareWithSourceError
-from ._handy import Handy, Grub
+from ._handy import Handy, Grub, GrubMountPoint
 from ._source import Source
 
 
@@ -50,10 +50,10 @@ class Target:
             rootfsMnt = kwargs["rootfs_mount_point"]
             bootMnt = kwargs.get("boot_mount_point", None)
             if bootMnt is None:
-                self._mnt = Grub.probeMnt(rootfsMnt, True)
+                self._mnt = GrubMountPoint(rootfsMnt, True)
                 self._bootDir = os.path.join(self._mnt.mountpoint, "boot")
             else:
-                self._mnt = Grub.probeMnt(bootMnt, False)
+                self._mnt = GrubMountPoint(bootMnt, False)
                 self._bootDir = self._mnt.mountpoint
         elif self._targetType == TargetType.PYCDLIB_OBJ:
             assert self._mode in [TargetAccessMode.R, TargetAccessMode.W]

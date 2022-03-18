@@ -257,45 +257,37 @@ class Grub:
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
-    def probeMnt(mnt, rootfs_or_boot):
-        # mnt should be an psutil.mountpoint compatible object
-
-        try:
-            fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", mnt.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            fs = None
-
-        try:
-            fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs_uuid", "-d", mnt.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            fs_uuid = None
-
-        try:
-            bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", mnt.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            bios_hints = ""
-
-        try:
-            efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", mnt.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            efi_hints = ""
-
-        return GrubMountPoint(mnt, fs_uuid, PartiUtil.partiToDisk(mnt.device), fs, bios_hints, efi_hints, rootfs_or_boot)
-
-    @staticmethod
     def escape(in_str):
         return in_str.replace('\'', "'\\''")
 
 
 class GrubMountPoint:
 
-    def __init__(self, p, fs_uuid, disk, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
+    def __init__(self, p, rootfs_or_boot):
         self._p = p
-        self.fs_uuid = fs_uuid
-        self.disk = disk
-        self.grub_fs = grub_fs
-        self.grub_bios_hints = grub_bios_hints
-        self.grub_efi_hints = grub_efi_hints
+
+        self.disk = PartiUtil.partiToDisk(self._p.device)
+
+        try:
+            self.fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs_uuid", "-d", self._p.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            self.fs_uuid = None
+
+        try:
+            self.grub_fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", self._p.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            self.grub_fs = None
+
+        try:
+            self.grub_bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", self._p.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            self.grub_bios_hints = ""
+
+        try:
+            self.grub_efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", self._p.device], universal_newlines=True).rstrip("\n")
+        except subprocess.CalledProcessError:
+            self.grub_efi_hints = ""
+
         self._rootfs_or_boot = rootfs_or_boot
 
     @property
