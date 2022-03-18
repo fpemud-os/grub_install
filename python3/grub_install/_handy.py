@@ -280,7 +280,7 @@ class Grub:
         except subprocess.CalledProcessError:
             efi_hints = ""
 
-        class MountPoint:
+        class GrubMountPoint:
 
             def __init__(self, p, fs_uuid, disk, grub_fs, grub_bios_hints, grub_efi_hints, rootfs_or_boot):
                 self._p = p
@@ -313,7 +313,7 @@ class Grub:
             def is_boot_mount_point(self):
                 return not self._rootfs_or_boot
 
-        return MountPoint(mnt, fs_uuid, PartiUtil.partiToDisk(mnt.device), fs, bios_hints, efi_hints, rootfs_or_boot)
+        return GrubMountPoint(mnt, fs_uuid, PartiUtil.partiToDisk(mnt.device), fs, bios_hints, efi_hints, rootfs_or_boot)
 
     @staticmethod
     def escape(in_str):
