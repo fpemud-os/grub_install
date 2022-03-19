@@ -266,27 +266,23 @@ class GrubMountPoint:
     def __init__(self, p, rootfs_or_boot):
         self._p = p
 
+        def __getGrub(key):
+            try:
+                return subprocess.check_output(["grub-probe", "-t", key, "-d", self._p.device], universal_newlines=True).rstrip("\n")
+            except subprocess.CalledProcessError:
+                return None
+
         self.disk = PartiUtil.partiToDisk(self._p.device)
 
-        try:
-            self.fs_uuid = subprocess.check_output(["grub-probe", "-t", "fs_uuid", "-d", self._p.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            self.fs_uuid = None
+        self.fs_uuid = __getGrub("fs_uuid")
 
-        try:
-            self.grub_fs = subprocess.check_output(["grub-probe", "-t", "fs", "-d", self._p.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            self.grub_fs = None
+        self.grub_fs = __getGrub("fs")
 
-        try:
-            self.grub_bios_hints = subprocess.check_output(["grub-probe", "-t", "bios_hints", "-d", self._p.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            self.grub_bios_hints = ""
+        self.grub_partmap = __getGrub("partmap")
 
-        try:
-            self.grub_efi_hints = subprocess.check_output(["grub-probe", "-t", "efi_hints", "-d", self._p.device], universal_newlines=True).rstrip("\n")
-        except subprocess.CalledProcessError:
-            self.grub_efi_hints = ""
+        self.grub_bios_hints = __getGrub("bios_hints")
+
+        self.grub_efi_hints = __getGrub("efi_hints")
 
         self._rootfs_or_boot = rootfs_or_boot
 
