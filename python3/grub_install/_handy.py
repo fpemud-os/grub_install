@@ -197,8 +197,13 @@ class Grub:
         else:
             assert False
 
+        # partmap module
+        moduleList.append("part_%s" % (mnt.grub_partmap))
+
         # fs module
         moduleList.append(mnt.grub_fs)
+
+        # search module
         moduleList.append("search_fs_uuid")
 
         return (moduleList, hints)
@@ -272,12 +277,14 @@ class GrubMountPoint:
             except subprocess.CalledProcessError:
                 return None
 
+        # FIXME: what if filesystem is on raw block device
         self.disk = PartiUtil.partiToDisk(self._p.device)
 
         self.fs_uuid = __getGrub("fs_uuid")
 
         self.grub_fs = __getGrub("fs")
 
+        # FIXME: what if filesystem is on raw block device
         self.grub_partmap = __getGrub("partmap")
 
         self.grub_bios_hints = __getGrub("bios_hints")
