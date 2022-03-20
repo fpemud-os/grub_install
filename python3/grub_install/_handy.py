@@ -255,10 +255,12 @@ class Grub:
 
         with tempfile.TemporaryDirectory(dir=tmpDir) as tdir:
             loadCfgFile = os.path.join(tdir, "load.cfg")
-            coreImgFile = os.path.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(buf)
-            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-p", "abc", "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
+
+            coreImgFile = os.path.join(tdir, "core.img")
+            # "-p" has no use when "set prefix=" is in load.cfg, but this argument is not optional
+            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-p", "", "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
