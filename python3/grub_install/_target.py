@@ -220,7 +220,7 @@ class Target:
         force_mkdir(grubDir)
 
         if locales is not None:
-            dstDir = os.path.join(grubDir, "locales")
+            dstDir = os.path.join(grubDir, "locale")
             force_mkdir(dstDir, clear=True)
             if locales == "*":
                 for lname, fullfn in source.get_all_locale_files().items():
