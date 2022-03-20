@@ -251,14 +251,14 @@ class Grub:
         if bDebugImage is not None:
             buf += "set debug='%s'\n" % (bDebugImage)
         buf += "search.fs_uuid %s root%s\n" % (rootFsUuid, (" " + rootHints) if rootHints != "" else "")
-        buf += "set prefix=($root)'%s'\n" % (cls.escape(prefixDir))
+        buf += "set prefix=($root)'/%s'\n" % (cls.escape(prefixDir))
 
         with tempfile.TemporaryDirectory(dir=tmpDir) as tdir:
             loadCfgFile = os.path.join(tdir, "load.cfg")
             coreImgFile = os.path.join(tdir, "core.img")
             with open(loadCfgFile, "w") as f:
                 f.write(buf)
-            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-p", prefixDir, "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
+            subprocess.check_call(["grub-mkimage", "-c", loadCfgFile, "-p", "abc", "-O", mkimage_target, "-d", source.get_platform_directory(platform_type), "-o", coreImgFile] + module_list)
             return pathlib.Path(coreImgFile).read_bytes()
 
     @staticmethod
